@@ -69,21 +69,20 @@ export const AppHeader: React.FC<Props> = ({
 
         {/* 自动交易开关 */}
         <Tooltip title={atActive ? `自動交易：${atCount} 個標的監控中` : '自動交易已暫停'}>
-          <div
+          <Button
+            size="small"
             onClick={() => { autoTradeService.setEnabled(!atCfg.enabled); onRefresh(); }}
             className={atActive ? 'auto-trade-active' : ''}
             style={{
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-              padding: '4px 10px', borderRadius: 20,
+              fontSize: 11,
               background: atActive ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${atActive ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              borderColor: atActive ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)',
+              color: atActive ? '#4ade80' : '#8b949e',
             }}
+            icon={<span style={{ fontSize: 12, color: atActive ? '#4ade80' : '#8b949e' }}>⚡</span>}
           >
-            <span style={{ fontSize: 12, color: atActive ? '#4ade80' : '#484f58' }}>⚡</span>
-            <Text style={{ fontSize: 11, color: atActive ? '#4ade80' : '#484f58' }}>
-              {atActive ? `自動 ${atCount}` : '自動'}
-            </Text>
-          </div>
+            {atActive ? `自動 ${atCount}` : '自動'}
+          </Button>
         </Tooltip>
 
         <Tooltip title="搜索並添加資產">
