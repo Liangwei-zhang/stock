@@ -62,7 +62,9 @@ export interface BacktestResult {
  * 从已执行的交易记录计算胜率等绩效指标
  */
 export function calcTradeStats(trades: Trade[]): TradeStats | null {
-  const closedTrades = trades.filter(t => t.side === 'sell' && t.pnl !== undefined);
+  const closedTrades = trades
+    .filter(t => t.side === 'sell' && t.pnl !== undefined)
+    .sort((a, b) => a.date - b.date); // chronological order for drawdown calculation
   if (closedTrades.length === 0) return null;
 
   const pnls = closedTrades.map(t => t.pnl!);
@@ -80,7 +82,7 @@ export function calcTradeStats(trades: Trade[]): TradeStats | null {
   let peak = 0;
   let equity = 0;
   let maxDD = 0;
-  for (const pnl of pnls.slice().reverse()) { // 按时间正序
+  for (const pnl of pnls) { // already sorted chronologically
     equity += pnl;
     if (equity > peak) peak = equity;
     const dd = peak > 0 ? (peak - equity) / peak : 0;
