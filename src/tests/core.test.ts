@@ -352,11 +352,11 @@ describe('tradingSimulator — account management', () => {
   beforeEach(async () => {
     vi.resetModules();
     // Reset localStorage mock and create fresh instance
+    const lsStore: Record<string, string> = {};
     vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
+      getItem: (k: string) => lsStore[k] ?? null,
+      setItem: (k: string, v: string) => { lsStore[k] = v; },
+      removeItem: (k: string) => { delete lsStore[k]; },
     });
     const mod = await import('../services/tradingSimulator');
     simulator = mod.tradingSimulator;
@@ -594,7 +594,7 @@ describe('autoTradeService — configuration', () => {
     const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setEnabled(true);
     // BTC disabled
-    const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high', score: 80, reasons: ['test'] }, sellSignal: { signal:false, level:null, score:0, reasons:[] }, prediction: { type:'neutral', probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
+    const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high' as const, score: 80, reasons: ['test'] }, sellSignal: { signal:false, level: null, score:0, reasons:[] }, prediction: { type: 'neutral' as const, probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
     await autoTradeService.onMarketUpdate(mockAnalysis);
     expect(autoTradeService.getExecutions().length).toBe(0); // symbol not enabled
   });
@@ -607,11 +607,11 @@ describe('autoTradeService — configuration', () => {
 describe('simulatedUsers — service', () => {
   beforeEach(() => {
     vi.resetModules();
+    const lsStore: Record<string, string> = {};
     vi.stubGlobal('localStorage', {
-      _store: {} as Record<string, string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
+      getItem: (k: string) => lsStore[k] ?? null,
+      setItem: (k: string, v: string) => { lsStore[k] = v; },
+      removeItem: (k: string) => { delete lsStore[k]; },
     });
   });
 
@@ -663,32 +663,35 @@ describe('simulatedUsers — service', () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('price display precision', () => {
-  const fmtPrice = (p: number) =>
-    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.1 ? p.toFixed(4) : p >= 0.001 ? p.toFixed(6) : p.toFixed(8);
-
-  it('BTC at 84325.50 shows 2 decimals', () => {
+  it('BTC at 84325.50 shows 2 decimals', async () => {
+    const { fmtPrice } = await import('../utils/format');
     expect(fmtPrice(84325.50)).toBe('84325.50');
   });
 
-  it('ETH at 3245.80 shows 2 decimals', () => {
+  it('ETH at 3245.80 shows 2 decimals', async () => {
+    const { fmtPrice } = await import('../utils/format');
     expect(fmtPrice(3245.80)).toBe('3245.80');
   });
 
-  it('DOGE at 0.15 shows 4 decimals', () => {
+  it('DOGE at 0.15 shows 4 decimals', async () => {
+    const { fmtPrice } = await import('../utils/format');
     expect(fmtPrice(0.15)).toBe('0.1500');
   });
 
-  it('sub-cent token at 0.005 shows 6 decimals', () => {
+  it('sub-cent token at 0.005 shows 6 decimals', async () => {
+    const { fmtPrice } = await import('../utils/format');
     expect(fmtPrice(0.005)).toBe('0.005000');
   });
 
-  it('SHIB at 0.00002 shows 8 decimals (not 0.0000)', () => {
+  it('SHIB at 0.00002 shows 8 decimals (not 0.0000)', async () => {
+    const { fmtPrice } = await import('../utils/format');
     const display = fmtPrice(0.00002);
     expect(display).toBe('0.00002000');
     expect(display).not.toBe('0.0000');
   });
 
-  it('mid-price AAPL at 189.45 shows 2 decimals', () => {
+  it('mid-price AAPL at 189.45 shows 2 decimals', async () => {
+    const { fmtPrice } = await import('../utils/format');
     expect(fmtPrice(189.45)).toBe('189.45');
   });
 });

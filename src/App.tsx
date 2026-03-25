@@ -4,7 +4,6 @@ import { PlusOutlined } from '@ant-design/icons';
 import { alertService }     from './services/alertService';
 import { indicatorService } from './services/indicatorService';
 import { stockService }     from './services/stockService';
-import { assetTypeLabel, assetTypeColor } from './services/searchService';
 import { useStockData }       from './hooks/useStockData';
 import { useChart }           from './hooks/useChart';
 import { AppHeader }          from './components/AppHeader';
@@ -13,17 +12,12 @@ import { AnalysisGrid }       from './components/AnalysisGrid';
 import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
+import { ChartToolbar }       from './components/ChartToolbar';
 import { Alert, WatchlistItem } from './types';
 import './App.css';
 
 const { Content } = Layout;
 const { Text }    = Typography;
-
-const SOURCE_CONFIG = {
-  real:      { label: '实时', dot: '🟢' },
-  database:  { label: '缓存', dot: '🟡' },
-  simulated: { label: '模拟', dot: '⚪' },
-} as const;
 
 const App: React.FC = () => {
   // ── 全局 UI 状态 ────────────────────────────────────────────────────────────
@@ -70,9 +64,6 @@ const App: React.FC = () => {
   const analysis     = selectedStock ? indicatorService.analyzeStock(selectedStock) : null;
   const selectedMeta = selectedStock ? stockService.getSymbolMeta(selectedStock)   : null;
   const selectedItem = watchlistItems.find(w => w.symbol === selectedStock);
-
-  const fmtPrice = (p: number) =>
-    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
 
   const handleRemoveWithSelect = async (symbol: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -136,37 +127,12 @@ const App: React.FC = () => {
                 <>
                   {/* ── K 线图 ── */}
                   <div className="chart-wrapper">
-                    <div className="chart-toolbar">
-                      <div className="chart-title-group">
-                        <div>
-                          <span className="chart-price-display">${fmtPrice(analysis.price)}</span>
-                          {(() => {
-                            const chg = stocks.find(s => s.stock.symbol === selectedStock)?.stock.changePercent ?? 0;
-                            return (
-                              <span style={{ marginLeft: 8, fontSize: 13, color: chg >= 0 ? '#3fb950' : '#f85149', fontWeight: 500 }}>
-                                {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
-                              </span>
-                            );
-                          })()}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {selectedItem && <Tag color={assetTypeColor(selectedItem.assetType)} style={{ margin: 0 }}>{assetTypeLabel(selectedItem.assetType)}</Tag>}
-                          {selectedMeta && (
-                            <Tag color={selectedMeta.source === 'real' ? 'success' : selectedMeta.source === 'database' ? 'warning' : 'default'} style={{ margin: 0 }}>
-                              {SOURCE_CONFIG[selectedMeta.source].dot} {SOURCE_CONFIG[selectedMeta.source].label}
-                            </Tag>
-                          )}
-                        </div>
-                      </div>
-                      <div className="chart-legend">
-                        {[['MA5', '#1890ff'], ['MA10', '#faad14'], ['MA20', '#722ed1']].map(([l, c]) => (
-                          <span key={l} className="legend-item">
-                            <span className="legend-dot" style={{ background: c }}/>
-                            {l}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    <ChartToolbar
+                      price={analysis.price}
+                      changePercent={stocks.find(s => s.stock.symbol === selectedStock)?.stock.changePercent ?? 0}
+                      selectedItem={selectedItem}
+                      source={selectedMeta?.source}
+                    />
                     <div className="chart-container" ref={setChartContainer}/>
                   </div>
 
