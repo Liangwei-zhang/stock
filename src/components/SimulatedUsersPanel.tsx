@@ -12,6 +12,7 @@ import {
   TrophyOutlined, ReloadOutlined, SettingOutlined,
   ArrowUpOutlined, ArrowDownOutlined, PauseOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import {
   simulatedUserService,
   SimUserState, SimTrade, DecisionLog, UserStrategy,
@@ -35,18 +36,9 @@ const ACTION_COLOR: Record<string, string> = {
   close_timeout:   '#ffa940',
   paused:          '#faad14',
 };
-const ACTION_LABEL: Record<string, string> = {
-  buy:           '買入',
-  sell:          '做空',
-  hold:          '持倉',
-  skip:          '觀望',
-  close_sl:      '止損',
-  close_tp:      '止盈',
-  close_timeout: '超時',
-  paused:        '暫停',
-};
 
 export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded }) => {
+  const { t } = useTranslation();
   const [enabled,   setEnabled]   = useState(simulatedUserService.isEnabled());
   const [states,    setStates]    = useState<SimUserState[]>([]);
   const [ranking,   setRanking]   = useState<{ state: SimUserState; totalValue: number; pnlPct: number }[]>([]);
@@ -114,7 +106,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               </Col>
               <Col>
                 <Text strong style={{ fontSize: 13 }}>{user.name}</Text>
-                {state.paused && <Tag color="orange" style={{ marginLeft: 4, fontSize: 10 }}>暫停</Tag>}
+                {state.paused && <Tag color="orange" style={{ marginLeft: 4, fontSize: 10 }}>{t('users.paused')}</Tag>}
               </Col>
             </Row>
             <Text type="secondary" style={{ fontSize: 11 }}>{user.description}</Text>
@@ -129,7 +121,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               </div>
             )}
             {state.allowedSymbols.length === 0 && (
-              <Text type="secondary" style={{ fontSize: 10 }}>交易所有標的</Text>
+              <Text type="secondary" style={{ fontSize: 10 }}>{t('users.allSymbolsTraded')}</Text>
             )}
           </Col>
           <Col style={{ textAlign: 'right', minWidth: 100 }}>
@@ -137,12 +129,12 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               {isPos ? '+' : ''}{pnlPct.toFixed(2)}%
             </div>
             <Text type="secondary" style={{ fontSize: 11 }}>
-              ${totalValue.toFixed(0)} | {trades} 筆
-              {winRate !== null && ` | 勝${(winRate*100).toFixed(0)}%`}
+              ${totalValue.toFixed(0)} | {t('users.trades', { count: trades })}
+              {winRate !== null && ` | ${t('users.winRate', { rate: (winRate*100).toFixed(0) })}`}
             </Text>
           </Col>
           <Col>
-            <Tooltip title="設置策略">
+            <Tooltip title={t('users.setStrategy')}>
               <Button
                 size="small"
                 type="text"
@@ -150,7 +142,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                 onClick={e => { e.stopPropagation(); setSettingUser(state); }}
               />
             </Tooltip>
-            <Tooltip title="重置此用戶">
+            <Tooltip title={t('users.resetUser')}>
               <Button
                 size="small"
                 type="text"
@@ -165,9 +157,9 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
         {/* 迷你指标行 */}
         <Row gutter={8} style={{ marginTop: 8 }}>
           {[
-            { label: '持倉', val: state.positions.size, color: state.positions.size > 0 ? '#1890ff' : '#8b949e' },
-            { label: '盈虧比', val: state.tradeStats ? state.tradeStats.profitFactor.toFixed(1) : '-', color: undefined },
-            { label: '最大回撤', val: state.tradeStats ? `${(state.tradeStats.maxDrawdown*100).toFixed(1)}%` : '-', color: undefined },
+            { label: t('users.holding'),      val: state.positions.size, color: state.positions.size > 0 ? '#1890ff' : '#8b949e' },
+            { label: t('users.profitFactor'), val: state.tradeStats ? state.tradeStats.profitFactor.toFixed(1) : '-', color: undefined },
+            { label: t('users.maxDrawdown'),  val: state.tradeStats ? `${(state.tradeStats.maxDrawdown*100).toFixed(1)}%` : '-', color: undefined },
             { label: 'Sharpe', val: state.tradeStats ? state.tradeStats.sharpeRatio.toFixed(2) : '-', color: undefined },
           ].map(m => (
             <Col key={m.label}>
@@ -182,17 +174,28 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
 
   // ── 用户详情：日志 + 交易 ───────────────────────────────────────────────────
 
+  const ACTION_LABEL: Record<string, string> = {
+    buy:           t('users.actionBuy'),
+    sell:          t('users.actionSell'),
+    hold:          t('users.actionHold'),
+    skip:          t('users.actionSkip'),
+    close_sl:      t('users.actionCloseSl'),
+    close_tp:      t('users.actionCloseTp'),
+    close_timeout: t('users.actionCloseTimeout'),
+    paused:        t('users.actionPaused'),
+  };
+
   const logColumns = [
     {
-      title: '時間', dataIndex: 'ts', key: 'ts', width: 80,
-      render: (t: number) => new Date(t).toLocaleTimeString(),
+      title: t('users.logTime'), dataIndex: 'ts', key: 'ts', width: 80,
+      render: (ts: number) => new Date(ts).toLocaleTimeString(),
     },
     {
-      title: '標的', dataIndex: 'symbol', key: 'symbol', width: 70,
+      title: t('users.logSymbol'), dataIndex: 'symbol', key: 'symbol', width: 70,
       render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag>,
     },
     {
-      title: '動作', dataIndex: 'action', key: 'action', width: 60,
+      title: t('users.logAction'), dataIndex: 'action', key: 'action', width: 60,
       render: (a: string) => (
         <Tag color={ACTION_COLOR[a]} style={{ margin: 0, fontSize: 11 }}>
           {ACTION_LABEL[a] ?? a}
@@ -200,44 +203,44 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
       ),
     },
     {
-      title: '價格', dataIndex: 'price', key: 'price', width: 80,
+      title: t('users.tradePrice'), dataIndex: 'price', key: 'price', width: 80,
       render: (p: number) => `$${p.toFixed(2)}`,
     },
-    { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
+    { title: t('users.logReason'), dataIndex: 'reason', key: 'reason', ellipsis: true },
   ];
 
   const tradeColumns = [
     {
-      title: '時間', dataIndex: 'exitAt', key: 'exitAt', width: 80,
-      render: (t: number) => new Date(t).toLocaleTimeString(),
+      title: t('users.logTime'), dataIndex: 'exitAt', key: 'exitAt', width: 80,
+      render: (ts: number) => new Date(ts).toLocaleTimeString(),
     },
     {
-      title: '標的', dataIndex: 'symbol', key: 'symbol', width: 65,
+      title: t('users.logSymbol'), dataIndex: 'symbol', key: 'symbol', width: 65,
       render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag>,
     },
     {
-      title: '方向', dataIndex: 'side', key: 'side', width: 55,
+      title: t('users.tradeSide'), dataIndex: 'side', key: 'side', width: 55,
       render: (s: string) => (
         <Tag color={s === 'buy' ? 'green' : 'red'} style={{ margin: 0, fontSize: 11 }}>
-          {s === 'buy' ? '多' : '空'}
+          {s === 'buy' ? t('common.long') : t('common.short')}
         </Tag>
       ),
     },
     {
-      title: '退出', dataIndex: 'exitReason', key: 'exitReason', width: 55,
+      title: 'Exit', dataIndex: 'exitReason', key: 'exitReason', width: 55,
       render: (r: string) => {
         const map: Record<string, [string, string]> = {
-          signal:      ['信號', 'blue'],
-          stop_loss:   ['止損', 'red'],
-          take_profit: ['止盈', 'green'],
-          timeout:     ['超時', 'orange'],
+          signal:      [t('trading.exitSignal'),     'blue'],
+          stop_loss:   [t('trading.exitStopLoss'),   'red'],
+          take_profit: [t('trading.exitTakeProfit'), 'green'],
+          timeout:     [t('common.timeout'),         'orange'],
         };
         const [label, color] = map[r] ?? [r, 'default'];
         return <Tag color={color} style={{ margin: 0, fontSize: 11 }}>{label}</Tag>;
       },
     },
     {
-      title: '盈虧', dataIndex: 'pnl', key: 'pnl', width: 90,
+      title: t('users.tradePnl'), dataIndex: 'pnl', key: 'pnl', width: 90,
       render: (p: number, r: SimTrade) => (
         <Text style={{ color: p >= 0 ? '#52c41a' : '#ff4d4f', fontSize: 12 }}>
           {p >= 0 ? '+' : ''}${p.toFixed(2)}<br />

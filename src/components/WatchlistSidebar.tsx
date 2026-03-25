@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography, Tag, Tooltip, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { autoTradeService } from '../services/autoTradeService';
 import { StockData, SignalResult, WatchlistItem, DataSource } from '../types';
 
@@ -28,13 +29,14 @@ const fmtPrice = (p: number) =>
 export const WatchlistSidebar: React.FC<Props> = ({
   stocks, selectedStock, onSelect, onRemove, onAddClick,
 }) => {
+  const { t } = useTranslation();
   const atCfg = autoTradeService.getConfig();
 
   return (
     <div className="watchlist-sidebar">
       <div className="sidebar-header">
         <Text className="sidebar-header-title">
-          自选股 {stocks.length > 0 && `· ${stocks.length}`}
+          {t('app.watchlist')} {stocks.length > 0 && `· ${stocks.length}`}
         </Text>
         <Button
           type="text" size="small" icon={<PlusOutlined/>}
@@ -47,7 +49,7 @@ export const WatchlistSidebar: React.FC<Props> = ({
         {stocks.length === 0 ? (
           <div style={{ padding: '30px 10px', textAlign: 'center', color: '#484f58', fontSize: 12 }}>
             <div style={{ marginBottom: 8, fontSize: 20 }}>📋</div>
-            点击 + 添加资产
+            {t('app.addAssetHint')}
           </div>
         ) : stocks.map(({ stock: s, buy, sell }) => {
           const symOn  = atCfg.symbolsEnabled[s.symbol] ?? false;
