@@ -202,10 +202,20 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                     <Tag color="green" style={{ margin: 0, fontSize: 10 }}>TP${fmtPrice(r.takeProfit ?? 0)}</Tag>
                   </Space>
                 )},
-                { title: '浮动盈亏', key: 'pnl', render: (_: unknown, r: any) => {
-                  const p   = stocks.find(s => s.stock.symbol === r.symbol)?.stock.price ?? r.avgPrice;
-                  const pnl = (p - r.avgPrice) * r.quantity;
-                  return <Text style={{ color: pnl >= 0 ? '#3fb950' : '#f85149', fontSize: 12 }}>{fmtPnl(pnl)}</Text>;
+                { title: '浮動盈虧', key: 'pnl', render: (_: unknown, r: any) => {
+                  const p    = stocks.find(s => s.stock.symbol === r.symbol)?.stock.price ?? r.avgPrice;
+                  const pnl  = (p - r.avgPrice) * r.quantity;
+                  const pct  = ((p - r.avgPrice) / r.avgPrice) * 100;
+                  const barW = Math.min(Math.abs(pct) * 4, 100);
+                  return (
+                    <div>
+                      <Text style={{ color: pnl >= 0 ? '#4ade80' : '#f85149', fontSize: 12 }}>{fmtPnl(pnl)}</Text>
+                      <div
+                        className={`position-profit-bar${pnl < 0 ? ' negative' : ''}`}
+                        style={{ width: `${barW}%` }}
+                      />
+                    </div>
+                  );
                 }},
                 { title: '操作', key: 'act', width: 70, render: (_: unknown, r: any) => (
                   <Button size="small" danger onClick={async () => {

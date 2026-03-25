@@ -54,7 +54,13 @@ export function useStockData() {
 
     // 批量预警 — 只在信號狀態從「無」→「有」時觸發
     for (const sym of stockService.getAvailableStocks()) {
-      const a = indicatorService.analyzeStock(sym);
+      let a;
+      try {
+        a = indicatorService.analyzeStock(sym);
+      } catch {
+        // 單個標的分析失敗不應影響其他標的
+        continue;
+      }
       if (!a) continue;
 
       const prev     = prevSignals.current.get(sym);
@@ -109,7 +115,11 @@ export function useStockData() {
     tradingSimulator.setOnUpdate(() => { if (mounted) setRefreshKey(k => k + 1); });
 
     const tick = async () => {
-      await stockService.updateStocks();
+      try {
+        await stockService.updateStocks();
+      } catch (e) {
+        console.warn('[useStockData] updateStocks failed, proceeding with UI update:', e);
+      }
       if (!mounted) return;
       updateUI();
 

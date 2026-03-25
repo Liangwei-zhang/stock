@@ -46,6 +46,34 @@ const ACTION_LABEL: Record<string, string> = {
   paused:        '暫停',
 };
 
+/** Mini profit curve canvas chart */
+const MiniProfitChart: React.FC<{ points: number[]; width?: number; height?: number }> = ({
+  points, width = 80, height = 18,
+}) => {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || points.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, width, height);
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    const isUp  = points[points.length - 1] >= points[0];
+    ctx.beginPath();
+    ctx.strokeStyle = isUp ? '#4ade80' : '#f85149';
+    ctx.lineWidth   = 1.2;
+    points.forEach((p, i) => {
+      const x = (i / (points.length - 1)) * width;
+      const y = height - ((p - min) / range) * (height - 2) - 1;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }, [points, width, height]);
+  return <canvas ref={canvasRef} width={width} height={height} style={{ display: 'block', marginTop: 3 }} />;
+};
+
 export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded }) => {
   const [enabled,   setEnabled]   = useState(simulatedUserService.isEnabled());
   const [states,    setStates]    = useState<SimUserState[]>([]);
@@ -92,12 +120,31 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
     const winRate = state.tradeStats?.winRate ?? null;
     const trades  = state.trades.length;
 
+    // Mini profit curve from cumulative trade PnL
+    const profitCurve = React.useMemo(() => {
+      const points: number[] = [0];
+      let cum = 0;
+      // Iterate backwards (oldest first) without creating a reversed copy
+      for (let i = state.trades.length - 1; i >= 0; i--) {
+        cum += state.trades[i].pnl;
+        points.push(cum);
+      }
+      return points.slice(-20);
+    }, [state.trades]);
+
+    const cardClass = [
+      'sim-user-card',
+      rank === 1 ? 'rank-1' : '',
+      !isPos ? 'loss' : '',
+    ].filter(Boolean).join(' ');
+
     return (
       <Card
         size="small"
+        className={cardClass}
         style={{
           cursor: 'pointer',
-          border: activeUser === user.id ? '1.5px solid #1890ff' : '0.5px solid var(--color-border-tertiary, #e8e8e8)',
+          border: activeUser === user.id ? '1.5px solid #1890ff' : undefined,
           transition: 'all 0.2s',
           background: activeUser === user.id ? 'rgba(24,144,255,0.06)' : undefined,
         }}
@@ -131,9 +178,13 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
             {state.allowedSymbols.length === 0 && (
               <Text type="secondary" style={{ fontSize: 10 }}>交易所有標的</Text>
             )}
+            {/* Mini profit sparkline */}
+            {profitCurve.length >= 2 && (
+              <MiniProfitChart points={profitCurve} width={80} height={18} />
+            )}
           </Col>
           <Col style={{ textAlign: 'right', minWidth: 100 }}>
-            <div style={{ fontSize: 16, fontWeight: 500, color: isPos ? '#52c41a' : '#ff4d4f' }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: isPos ? '#4ade80' : '#ff4d4f' }}>
               {isPos ? '+' : ''}{pnlPct.toFixed(2)}%
             </div>
             <Text type="secondary" style={{ fontSize: 11 }}>
@@ -462,6 +513,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                         dataSource={selectedState.log}
                         columns={logColumns}
                         rowKey={(r: DecisionLog) => `${r.ts}-${r.symbol}`}
+                        rowClassName={() => 'decision-log-entry'}
                         size="small"
                         pagination={{ pageSize: 10, showSizeChanger: false }}
                         scroll={{ x: 400 }}

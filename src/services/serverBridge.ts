@@ -22,6 +22,17 @@ export function pushAlertToServer(alert: unknown): void {
   });
 }
 
+/** 從服務端發送 Telegram 通知（非阻塞，失敗靜默） */
+export function sendTelegramViaServer(message: string): void {
+  fetch(`${SERVER_URL}/api/telegram`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ message }),
+  }).catch(() => {
+    // Server not running or Telegram not configured — silently ignore.
+  });
+}
+
 /** 从后端拉取当前预警列表（可选，用于初始化时同步外部数据） */
 export async function getAlertsFromServer(): Promise<unknown[]> {
   try {

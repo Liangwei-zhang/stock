@@ -38,7 +38,7 @@ export const AppHeader: React.FC<Props> = ({
           <circle cx="12" cy="14" r="2" fill="white"/>
           <circle cx="20" cy="10" r="2" fill="white"/>
         </svg>
-        <Title level={5} className="header-title">股票智能预警</Title>
+        <Title level={5} className="header-title">股票智能預警</Title>
       </div>
 
       <div className="header-center">
@@ -68,30 +68,32 @@ export const AppHeader: React.FC<Props> = ({
         <ExportButton symbol={selectedStock} disabled={!selectedStock}/>
 
         {/* 自动交易开关 */}
-        <Tooltip title={atActive ? `自动交易：${atCount} 个标的监控中` : '自动交易已暂停'}>
+        <Tooltip title={atActive ? `自動交易：${atCount} 個標的監控中` : '自動交易已暫停'}>
           <div
             onClick={() => { autoTradeService.setEnabled(!atCfg.enabled); onRefresh(); }}
+            className={atActive ? 'auto-trade-active' : ''}
             style={{
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
               padding: '4px 10px', borderRadius: 20,
-              background: atActive ? 'rgba(63,185,80,0.12)' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${atActive ? 'rgba(63,185,80,0.35)' : 'rgba(255,255,255,0.1)'}`,
+              background: atActive ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${atActive ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)'}`,
             }}
           >
-            <span style={{ fontSize: 12, color: atActive ? '#3fb950' : '#484f58' }}>⚡</span>
-            <Text style={{ fontSize: 11, color: atActive ? '#3fb950' : '#484f58' }}>
-              {atActive ? `自动 ${atCount}` : '自动'}
+            <span style={{ fontSize: 12, color: atActive ? '#4ade80' : '#484f58' }}>⚡</span>
+            <Text style={{ fontSize: 11, color: atActive ? '#4ade80' : '#484f58' }}>
+              {atActive ? `自動 ${atCount}` : '自動'}
             </Text>
           </div>
         </Tooltip>
 
-        <Tooltip title="搜索并添加资产">
+        <Tooltip title="搜索並添加資產">
           <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>添加</Button>
         </Tooltip>
 
         <Badge count={unreadCount} size="small" offset={[-2, 2]}>
           <Button type="text" icon={<BellOutlined style={{ fontSize: 18 }}/>}
-            className="alert-button" onClick={onAlertClick}/>
+            className={`alert-button${unreadCount > 0 ? ' alert-badge-bounce' : ''}`}
+            onClick={onAlertClick}/>
         </Badge>
       </div>
     </Header>

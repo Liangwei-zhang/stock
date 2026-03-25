@@ -200,6 +200,42 @@ app.get('/api/yahoo/:symbol', async (req, res) => {
   }
 });
 
+// ─── Telegram 通知代理 ────────────────────────────────────────────────────────
+// Server 端統一發送，避免 CORS 問題，且 Token 不暴露於前端
+
+app.post('/api/telegram', async (req, res) => {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId   = process.env.TELEGRAM_CHAT_ID;
+
+  if (!botToken || !chatId) {
+    res.json({ success: false, reason: 'not_configured' });
+    return;
+  }
+
+  const { message } = req.body ?? {};
+  if (!message) {
+    res.status(400).json({ success: false, reason: 'missing message' });
+    return;
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      res.status(502).json({ success: false, reason: body });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(502).json({ success: false, reason: err.message });
+  }
+});
+
 // ─── 健康检查 ─────────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {

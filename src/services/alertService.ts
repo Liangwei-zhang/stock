@@ -5,38 +5,14 @@
  * 去重窗口从 24h 缩短为 2h，避免过于激进地抑制通知
  *
  * Telegram 配置：在项目根目录创建 .env 文件（参考 .env.example）
- *   VITE_TELEGRAM_BOT_TOKEN=xxx
- *   VITE_TELEGRAM_CHAT_ID=xxx
+ *   TELEGRAM_BOT_TOKEN=xxx   (服務端環境變量，不含 VITE_ 前綴)
+ *   TELEGRAM_CHAT_ID=xxx
  */
 
 import { Alert, StockAnalysis } from '../types';
-import { pushAlertToServer } from './serverBridge';
+import { pushAlertToServer, sendTelegramViaServer } from './serverBridge';
 
 const DEDUP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2小时去重
-
-// ─── Telegram 配置（从环境变量读取，不硬编码）────────────────────────────────
-// 在 .env 中设置 VITE_TELEGRAM_BOT_TOKEN 和 VITE_TELEGRAM_CHAT_ID
-// 未配置时 Telegram 推送静默跳过，不影响其他功能
-const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string | undefined;
-const TELEGRAM_CHAT_ID   = import.meta.env.VITE_TELEGRAM_CHAT_ID   as string | undefined;
-
-async function sendToTelegram(message: string): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return; // 未配置则跳过
-  try {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        chat_id:    TELEGRAM_CHAT_ID,
-        text:       message,
-        parse_mode: 'Markdown',
-      }),
-    });
-  } catch (e) {
-    console.error('Telegram notification failed:', e);
-  }
-}
 
 class AlertService {
   private alerts: Alert[] = [];
@@ -89,7 +65,7 @@ class AlertService {
     // Push to server for external monitoring
     pushAlertToServer(alert);
 
-    // Send to Telegram（仅在 .env 配置了 token 时生效）
+    // Send to Telegram via server（服務端統一發送，避免 CORS，Token 不暴露於前端）
     const tgMsg =
       `🛎️ *股票預警*\n\n` +
       `${icons[type]} *${analysis.symbol}* ${typeLabel[type]}信號\n` +
@@ -97,7 +73,7 @@ class AlertService {
       `價格：$${analysis.price.toFixed(2)}\n` +
       `評分：${signal.score}分\n` +
       signal.reasons.slice(0, 3).map(r => '• ' + r).join('\n');
-    sendToTelegram(tgMsg);
+    sendTelegramViaServer(tgMsg);
 
     this.notify();
     return alert;
