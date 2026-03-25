@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fmtPrice } from '../utils/format';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -725,9 +726,6 @@ describe('simulatedUsers — service', () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('price display precision', () => {
-  const fmtPrice = (p: number) =>
-    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
-
   it('BTC at 84325.50 shows 2 decimals', () => {
     expect(fmtPrice(84325.50)).toBe('84325.50');
   });
@@ -736,12 +734,12 @@ describe('price display precision', () => {
     expect(fmtPrice(3245.80)).toBe('3245.80');
   });
 
-  it('DOGE at 0.15 shows 6 decimals', () => {
-    expect(fmtPrice(0.15)).toBe('0.150000');
+  it('DOGE at 0.15 shows 4 decimals', () => {
+    expect(fmtPrice(0.15)).toBe('0.1500');
   });
 
-  it('sub-cent token at 0.005 shows 8 decimals', () => {
-    expect(fmtPrice(0.005)).toBe('0.00500000');
+  it('sub-cent token at 0.005 shows 6 decimals', () => {
+    expect(fmtPrice(0.005)).toBe('0.005000');
   });
 
   it('SHIB at 0.00002 shows 8 decimals (not 0.0000)', () => {
@@ -854,7 +852,6 @@ describe('edge cases', () => {
   });
 
   it('price precision edge: exactly 100 uses 2 decimals', () => {
-    const fmtPrice = (p: number) => p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
     expect(fmtPrice(100)).toBe('100.00');
     expect(fmtPrice(99.999)).toBe('99.9990');
   });

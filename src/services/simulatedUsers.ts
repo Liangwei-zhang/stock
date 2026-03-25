@@ -244,7 +244,7 @@ function persist(state: SimUserState): void {
       strategy:       state.user.strategy,
     };
     localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
-  } catch {}
+  } catch (e) { console.warn('[simulatedUsers] persist 失敗:', e); }
 }
 
 /** 節流持久化：每個用戶最多每 5 秒寫一次 localStorage */
@@ -284,7 +284,7 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
       log:            s.log ?? [],
       paused:         s.paused ?? false,
     };
-  } catch { return blank; }
+  } catch (e) { console.warn('[simulatedUsers] restore 失敗:', e); return blank; }
 }
 
 // ─── 决策引擎 ─────────────────────────────────────────────────────────────────

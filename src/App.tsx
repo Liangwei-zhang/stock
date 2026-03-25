@@ -14,15 +14,11 @@ import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
 import { Alert, WatchlistItem } from './types';
+import { fmtPrice } from './utils/format';
+import { SOURCE_CONFIG } from './utils/constants';
 import './App.css';
 
 const { Text }    = Typography;
-
-const SOURCE_CONFIG = {
-  real:      { label: '实时', dot: '🟢' },
-  database:  { label: '缓存', dot: '🟡' },
-  simulated: { label: '模拟', dot: '⚪' },
-} as const;
 
 const App: React.FC = () => {
   // ── 全局 UI 状态 ────────────────────────────────────────────────────────────
@@ -69,9 +65,6 @@ const App: React.FC = () => {
   const analysis     = selectedStock ? indicatorService.analyzeStock(selectedStock) : null;
   const selectedMeta = selectedStock ? stockService.getSymbolMeta(selectedStock)   : null;
   const selectedItem = watchlistItems.find(w => w.symbol === selectedStock);
-
-  const fmtPrice = (p: number) =>
-    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
 
   const handleRemoveWithSelect = async (symbol: string, e: React.MouseEvent) => {
     e.stopPropagation();
