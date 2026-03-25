@@ -22,7 +22,7 @@ export interface ErrorLogEntry {
 }
 
 export const errorLogService = {
-  log(zone: string, error: Error, _info?: ErrorInfo): void {
+  log(zone: string, error: Error, info?: ErrorInfo): void {
     try {
       const entry: ErrorLogEntry = {
         ts:      Date.now(),
