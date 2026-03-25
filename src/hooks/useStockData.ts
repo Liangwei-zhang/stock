@@ -114,34 +114,43 @@ export function useStockData() {
     autoTradeService.setOnChange(() => { if (mounted) setRefreshKey(k => k + 1); });
     tradingSimulator.setOnUpdate(() => { if (mounted) setRefreshKey(k => k + 1); });
 
+    // 防止上一個 tick 尚未結束時重疊執行（網路慢時 tick 可能超過 20s）
+    let tickRunning = false;
+
     const tick = async () => {
+      if (tickRunning) return;
+      tickRunning = true;
       try {
-        await stockService.updateStocks();
-      } catch (e) {
-        console.warn('[useStockData] updateStocks failed, proceeding with UI update:', e);
-      }
-      if (!mounted) return;
-      updateUI();
+        try {
+          await stockService.updateStocks();
+        } catch (e) {
+          console.warn('[useStockData] updateStocks failed, proceeding with UI update:', e);
+        }
+        if (!mounted) return;
+        updateUI();
 
-      const analyses = indicatorService.analyzeAllStocks(stockService.getAvailableStocks());
-      // 各 symbol 独立评估，单个失败不阻断其他
-      try {
-        await autoTradeService.onMarketUpdate(analyses);
-      } catch (e) {
-        console.warn('[useStockData] autoTradeService.onMarketUpdate 失败:', e);
-      }
-      if (!mounted) return;
+        const analyses = indicatorService.analyzeAllStocks(stockService.getAvailableStocks());
+        // 各 symbol 独立评估，单个失败不阻断其他
+        try {
+          await autoTradeService.onMarketUpdate(analyses);
+        } catch (e) {
+          console.warn('[useStockData] autoTradeService.onMarketUpdate 失败:', e);
+        }
+        if (!mounted) return;
 
-      const prices = new Map<string, number>(stockService.getStocks().map(s => [s.symbol, s.price]));
-      try {
-        await tradingSimulator.checkStopLossTakeProfit(prices);
-      } catch (e) {
-        console.warn('[useStockData] checkStopLossTakeProfit 失败:', e);
-      }
-      try {
-        simulatedUserService.checkPositions(prices);
-      } catch (e) {
-        console.warn('[useStockData] simulatedUserService.checkPositions 失败:', e);
+        const prices = new Map<string, number>(stockService.getStocks().map(s => [s.symbol, s.price]));
+        try {
+          await tradingSimulator.checkStopLossTakeProfit(prices);
+        } catch (e) {
+          console.warn('[useStockData] checkStopLossTakeProfit 失败:', e);
+        }
+        try {
+          simulatedUserService.checkPositions(prices);
+        } catch (e) {
+          console.warn('[useStockData] simulatedUserService.checkPositions 失败:', e);
+        }
+      } finally {
+        tickRunning = false;
       }
     };
 

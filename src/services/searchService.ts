@@ -6,8 +6,10 @@
 
 import { SearchResult, AssetType } from '../types';
 
-const PROXY = 'https://corsproxy.io/?';
 const SEARCH_URL = 'https://query1.finance.yahoo.com/v1/finance/search';
+// 後端搜尋代理端點（避免使用第三方 corsproxy.io，保護用戶查詢隱私）
+const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? 'http://localhost:3001';
+const BACKEND_SEARCH = `${SERVER_URL}/api/search`;
 
 // ─── 热门资产预设（无网络时展示）─────────────────────────────────────────────
 
@@ -100,8 +102,7 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
   );
 
   try {
-    const raw = `${SEARCH_URL}?q=${encodeURIComponent(q)}&quotesCount=12&newsCount=0&listsCount=0&region=US&lang=en-US`;
-    const res = await fetchTO(`${PROXY}${encodeURIComponent(raw)}`, 5000);
+    const res = await fetchTO(`${BACKEND_SEARCH}?q=${encodeURIComponent(q)}`, 5000);
     if (!res.ok) return local;
     const json = await res.json();
 

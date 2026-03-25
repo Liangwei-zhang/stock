@@ -59,6 +59,24 @@ function requireApiKey(req: express.Request, res: express.Response, next: expres
 
 app.use(express.json({ limit: '10mb' }));
 
+// ─── 速率限制（防暴力請求 / DoS）────────────────────────────────────────────
+// 每個 IP 60 秒內最多 120 次請求（約 2 req/s），超限回 429
+const _rlMap = new Map<string, { count: number; reset: number }>();
+app.use((req, res, next) => {
+  const key  = String(req.ip ?? 'unknown');
+  const now  = Date.now();
+  const slot = _rlMap.get(key);
+  if (!slot || now > slot.reset) {
+    _rlMap.set(key, { count: 1, reset: now + 60_000 });
+    next();
+  } else if (slot.count < 120) {
+    slot.count++;
+    next();
+  } else {
+    res.status(429).json({ error: 'Too many requests — please slow down' });
+  }
+});
+
 // ─── SQLite 初始化（可选：如果 better-sqlite3 未安装则退化为内存模式）────────
 
 let db: any = null;
@@ -260,6 +278,33 @@ app.get('/db/stats', (_req, res) => {
     'SELECT symbol, COUNT(*) as rows, MIN(timestamp) as from_ts, MAX(timestamp) as to_ts FROM ohlcv GROUP BY symbol'
   ).all();
   res.json({ available: true, symbols: rows });
+});
+
+// ─── Yahoo Finance 搜尋代理 ───────────────────────────────────────────────────
+// 前端搜尋改由此端點代理，不再依賴第三方 corsproxy.io
+
+app.get('/api/search', async (req, res) => {
+  const q = String(req.query.q ?? '').trim().slice(0, 100);
+  if (!q) { res.status(400).json({ error: 'Missing query' }); return; }
+
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${
+    encodeURIComponent(q)
+  }&quotesCount=12&newsCount=0&listsCount=0&region=US&lang=en-US`;
+
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal:  ctrl.signal,
+    });
+    if (!response.ok) { res.status(502).json({ error: `Yahoo returned ${response.status}` }); return; }
+    res.json(await response.json());
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  } finally {
+    clearTimeout(tid);
+  }
 });
 
 // ─── Yahoo Finance 代理（P4 修复）─────────────────────────────────────────────
