@@ -7,7 +7,6 @@
  *  - 交易記錄持久化（localStorage fallback）
  */
 
-const API_BASE = 'http://localhost:3002/api';
 const LS_KEY   = 'trading_simulator_v2';
 
 export interface Position {
@@ -70,7 +69,7 @@ function saveState(account: Account): void {
       trades:         account.trades,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+  } catch (e) { console.warn('[tradingSimulator] saveState 失敗:', e); }
 }
 
 function loadState(): PersistedState | null {
@@ -78,7 +77,7 @@ function loadState(): PersistedState | null {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PersistedState;
-  } catch { return null; }
+  } catch (e) { console.warn('[tradingSimulator] loadState 失敗:', e); return null; }
 }
 
 const FEE_RATE        = 0.001;
@@ -118,36 +117,7 @@ class TradingSimulator {
     };
     this.tradeCounter = saved.trades.length;
     this.recalcTotals();
-    // 不再尝试连接不存在的后端，直接从 localStorage 恢复状态
-  }
-
-  private async syncFromAPI(): Promise<void> {
-    try {
-      const [accRes, posRes, tradeRes] = await Promise.all([
-        fetch(`${API_BASE}/account`),
-        fetch(`${API_BASE}/positions`),
-        fetch(`${API_BASE}/trades`),
-      ]);
-      if (!accRes.ok) return;
-      const accData    = await accRes.json();
-      const posData: Position[] = await posRes.json();
-      const tradeData: Trade[]  = await tradeRes.json();
-      const posMap = new Map<string, Position>();
-      posData.forEach(p => posMap.set(p.symbol, p));
-      this.account = {
-        balance:         accData.balance,
-        initialBalance:  accData.initialBalance,
-        positions:       posMap,
-        trades:          tradeData,
-        totalValue:      accData.balance,
-        totalPnL:        0,
-        totalPnLPercent: 0,
-      };
-      this.tradeCounter = tradeData.length;
-      this.recalcTotals();
-      this.persist();
-      this.notify();
-    } catch {}
+    // 不再嘗試連接不存在的後端，直接從 localStorage 恢復狀態
   }
 
   private recalcTotals(prices?: Map<string, number>): void {
@@ -239,15 +209,6 @@ class TradingSimulator {
     this.persist();
     this.notify();
     return { success: true, message: `${type === 'buy' ? '買入' : '賣出'} ${quantity.toFixed(4)} ${symbol} @ $${price.toFixed(2)}` };
-  }
-
-  private async syncToAPI(signal: TradeSignal, quantity: number, exitReason: Trade['exitReason']): Promise<void> {
-    try {
-      await fetch(`${API_BASE}/trade`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: signal.symbol, side: signal.type, quantity, price: signal.price, exitReason }),
-      });
-    } catch {}
   }
 
   /**
