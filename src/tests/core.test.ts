@@ -87,7 +87,7 @@ function appendSFPCandle(candles: any[], swingHigh: number) {
 
 describe('signals.ts — detectBuySignal', () => {
   it('returns no signal when data is insufficient (<60 bars)', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const result = detectBuySignal(genCandles(30));
     expect(result.signal).toBe(false);
     expect(result.level).toBeNull();
@@ -95,19 +95,19 @@ describe('signals.ts — detectBuySignal', () => {
   });
 
   it('rejects buy in bear trend', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const result = detectBuySignal(genBearCandles(80));
     expect(result.signal).toBe(false);
   });
 
   it('score is non-negative', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const result = detectBuySignal(genCandles(80));
     expect(result.score).toBeGreaterThanOrEqual(0);
   });
 
   it('high level requires score >= 75 and >= 4 reasons', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const result = detectBuySignal(genBullCandles(80));
     if (result.level === 'high') {
       expect(result.score).toBeGreaterThanOrEqual(75);
@@ -116,7 +116,7 @@ describe('signals.ts — detectBuySignal', () => {
   });
 
   it('medium level requires score >= 55 and >= 3 reasons', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     for (let trial = 0; trial < 5; trial++) {
       const result = detectBuySignal(genBullCandles(80));
       if (result.level === 'medium') {
@@ -127,7 +127,7 @@ describe('signals.ts — detectBuySignal', () => {
   });
 
   it('reasons array is non-empty when signal is true', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     // Try many times to find a signal
     for (let i = 0; i < 10; i++) {
       const result = detectBuySignal(genBullCandles(80));
@@ -141,17 +141,17 @@ describe('signals.ts — detectBuySignal', () => {
 
 describe('signals.ts — detectSellSignal', () => {
   it('returns no signal when data is insufficient', async () => {
-    const { detectSellSignal } = await import('../src/utils/signals');
+    const { detectSellSignal } = await import('../utils/signals');
     expect(detectSellSignal(genCandles(20)).signal).toBe(false);
   });
 
   it('rejects sell in bull trend', async () => {
-    const { detectSellSignal } = await import('../src/utils/signals');
+    const { detectSellSignal } = await import('../utils/signals');
     expect(detectSellSignal(genBullCandles(80)).signal).toBe(false);
   });
 
   it('score is numeric and non-negative', async () => {
-    const { detectSellSignal } = await import('../src/utils/signals');
+    const { detectSellSignal } = await import('../utils/signals');
     const result = detectSellSignal(genBearCandles(80));
     expect(typeof result.score).toBe('number');
     expect(result.score).toBeGreaterThanOrEqual(0);
@@ -164,12 +164,12 @@ describe('signals.ts — detectSellSignal', () => {
 
 describe('sfp.ts — detectSFP', () => {
   it('returns null when data is too short', async () => {
-    const { detectSFP } = await import('../src/utils/sfp');
+    const { detectSFP } = await import('../utils/sfp');
     expect(detectSFP(genCandles(10))).toBeNull();
   });
 
   it('detects top SFP: long upper wick past swing high, closes inside', async () => {
-    const { detectSFP } = await import('../src/utils/sfp');
+    const { detectSFP } = await import('../utils/sfp');
     const base = genCandles(25, 100);
     // Create a clear swing high then SFP
     const swingHigh = Math.max(...base.map(c => c.high));
@@ -184,7 +184,7 @@ describe('sfp.ts — detectSFP', () => {
   });
 
   it('strength is between 0 and 35', async () => {
-    const { detectSFP } = await import('../src/utils/sfp');
+    const { detectSFP } = await import('../utils/sfp');
     for (let i = 0; i < 5; i++) {
       const result = detectSFP(genCandles(30));
       if (result) {
@@ -197,12 +197,12 @@ describe('sfp.ts — detectSFP', () => {
 
 describe('choch.ts — detectCHOCH', () => {
   it('returns null when data is too short', async () => {
-    const { detectCHOCH } = await import('../src/utils/choch');
+    const { detectCHOCH } = await import('../utils/choch');
     expect(detectCHOCH(genCandles(5), 'top')).toBeNull();
   });
 
   it('SFP top → CHOCH should confirm bearish structure (type=top)', async () => {
-    const { detectCHOCH } = await import('../src/utils/choch');
+    const { detectCHOCH } = await import('../utils/choch');
     // After SFP at top, CHOCH should look for downside structure
     const data = genBearCandles(20);
     const result = detectCHOCH(data, 'top');
@@ -215,7 +215,7 @@ describe('choch.ts — detectCHOCH', () => {
   });
 
   it('SFP bottom → CHOCH should confirm bullish structure (type=bottom)', async () => {
-    const { detectCHOCH } = await import('../src/utils/choch');
+    const { detectCHOCH } = await import('../utils/choch');
     const data = genBullCandles(20);
     const result = detectCHOCH(data, 'bottom');
     if (result) {
@@ -226,12 +226,12 @@ describe('choch.ts — detectCHOCH', () => {
 
 describe('cvd.ts — detectCVDBreach', () => {
   it('returns null when data is too short', async () => {
-    const { detectCVDBreach } = await import('../src/utils/cvd');
+    const { detectCVDBreach } = await import('../utils/cvd');
     expect(detectCVDBreach(genCandles(10))).toBeNull();
   });
 
   it('strength is between 0 and 20', async () => {
-    const { detectCVDBreach } = await import('../src/utils/cvd');
+    const { detectCVDBreach } = await import('../utils/cvd');
     for (let i = 0; i < 10; i++) {
       const result = detectCVDBreach(genCandles(25));
       if (result) {
@@ -242,7 +242,7 @@ describe('cvd.ts — detectCVDBreach', () => {
   });
 
   it('type is either top or bottom', async () => {
-    const { detectCVDBreach } = await import('../src/utils/cvd');
+    const { detectCVDBreach } = await import('../utils/cvd');
     for (let i = 0; i < 10; i++) {
       const result = detectCVDBreach(genCandles(25));
       if (result) {
@@ -254,31 +254,31 @@ describe('cvd.ts — detectCVDBreach', () => {
 
 describe('fvg.ts — detectFVG & calculateATR', () => {
   it('calculateATR returns 0 when data is too short', async () => {
-    const { calculateATR } = await import('../src/utils/fvg');
+    const { calculateATR } = await import('../utils/fvg');
     expect(calculateATR(genCandles(5))).toBe(0);
   });
 
   it('calculateATR returns positive value with sufficient data', async () => {
-    const { calculateATR } = await import('../src/utils/fvg');
+    const { calculateATR } = await import('../utils/fvg');
     const atr = calculateATR(genCandles(30));
     expect(atr).toBeGreaterThan(0);
   });
 
   it('calculateATRPercent is between 0 and 100', async () => {
-    const { calculateATRPercent } = await import('../src/utils/fvg');
+    const { calculateATRPercent } = await import('../utils/fvg');
     const pct = calculateATRPercent(genCandles(30));
     expect(pct).toBeGreaterThanOrEqual(0);
     expect(pct).toBeLessThan(100);
   });
 
   it('detectFVG returns array', async () => {
-    const { detectFVG } = await import('../src/utils/fvg');
+    const { detectFVG } = await import('../utils/fvg');
     const fvgs = detectFVG(genCandles(20));
     expect(Array.isArray(fvgs)).toBe(true);
   });
 
   it('FVG strength is between 0 and 15', async () => {
-    const { detectFVG } = await import('../src/utils/fvg');
+    const { detectFVG } = await import('../utils/fvg');
     const fvgs = detectFVG(genCandles(40));
     fvgs.forEach(f => {
       expect(f.strength).toBeGreaterThanOrEqual(0);
@@ -294,14 +294,14 @@ describe('fvg.ts — detectFVG & calculateATR', () => {
 
 describe('prediction.ts — predictTopBottom', () => {
   it('returns neutral when data insufficient (<65 bars)', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     const result = predictTopBottom(genCandles(30));
     expect(result.type).toBe('neutral');
     expect(result.probability).toBe(0);
   });
 
   it('probability is always between 0 and 1', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     for (let i = 0; i < 5; i++) {
       const result = predictTopBottom(genCandles(80));
       expect(result.probability).toBeGreaterThanOrEqual(0);
@@ -310,19 +310,19 @@ describe('prediction.ts — predictTopBottom', () => {
   });
 
   it('signals array is always an array', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     const result = predictTopBottom(genCandles(80));
     expect(Array.isArray(result.signals)).toBe(true);
   });
 
   it('type is one of top/bottom/neutral', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     const result = predictTopBottom(genCandles(80));
     expect(['top','bottom','neutral']).toContain(result.type);
   });
 
   it('neutral result has empty/zero probability', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     const result = predictTopBottom(genCandles(80));
     if (result.type === 'neutral') {
       expect(result.probability).toBe(0);
@@ -330,7 +330,7 @@ describe('prediction.ts — predictTopBottom', () => {
   });
 
   it('non-neutral result has probability > 0', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     // Try to get a non-neutral result
     for (let i = 0; i < 10; i++) {
       const result = predictTopBottom(genCandles(90, 100 + i * 5));
@@ -357,7 +357,7 @@ describe('tradingSimulator — account management', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const mod = await import('../src/services/tradingSimulator?v=' + Math.random());
+    const mod = await import('../services/tradingSimulator?v=' + Math.random());
     simulator = mod.tradingSimulator;
     await simulator.reset(100_000);
   });
@@ -455,18 +455,18 @@ describe('tradingSimulator — account management', () => {
 
 describe('backtestStats.ts — calcTradeStats', () => {
   it('returns null when no closed trades', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     expect(calcTradeStats([])).toBeNull();
   });
 
   it('returns null for trades with no pnl (open positions)', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const fakeTrades = [{ id:1, symbol:'BTC', side:'buy' as const, quantity:1, price:50000, total:50000, fee:50, date:Date.now() }];
     expect(calcTradeStats(fakeTrades)).toBeNull();
   });
 
   it('win rate is correct for known wins/losses', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const trades = [
       { id:1, symbol:'A', side:'sell' as const, quantity:1, price:110, total:110, fee:0, date:Date.now(), pnl:10, pnlPercent:10 },
       { id:2, symbol:'B', side:'sell' as const, quantity:1, price:90,  total:90,  fee:0, date:Date.now(), pnl:-10, pnlPercent:-10 },
@@ -481,7 +481,7 @@ describe('backtestStats.ts — calcTradeStats', () => {
   });
 
   it('profit factor = totalWin / totalLoss', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const trades = [
       { id:1, symbol:'A', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:30, pnlPercent:30 },
       { id:2, symbol:'B', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:-10, pnlPercent:-10 },
@@ -491,7 +491,7 @@ describe('backtestStats.ts — calcTradeStats', () => {
   });
 
   it('expectancy = totalPnL / tradeCount', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const trades = [
       { id:1, symbol:'A', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:20, pnlPercent:20 },
       { id:2, symbol:'B', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:-5, pnlPercent:-5 },
@@ -502,7 +502,7 @@ describe('backtestStats.ts — calcTradeStats', () => {
   });
 
   it('maxDrawdown is between 0 and 1', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const trades = Array.from({ length: 20 }, (_, i) => ({
       id: i+1, symbol:'A', side:'sell' as const, quantity:1,
       price:100, total:100, fee:0, date:Date.now()+(i*1000),
@@ -514,7 +514,7 @@ describe('backtestStats.ts — calcTradeStats', () => {
   });
 
   it('exit reason counts are correct', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const trades = [
       { id:1, symbol:'A', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:10, pnlPercent:10, exitReason:'stop_loss' as const },
       { id:2, symbol:'B', side:'sell' as const, quantity:1, price:100, total:100, fee:0, date:Date.now(), pnl:20, pnlPercent:20, exitReason:'take_profit' as const },
@@ -538,7 +538,7 @@ describe('autoTradeService — configuration', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     expect(autoTradeService.getConfig().enabled).toBe(false);
   });
 
@@ -549,7 +549,7 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     autoTradeService.setEnabled(true);
     expect(lsMock['auto_trade_config_v2']).toBeDefined();
     expect(JSON.parse(lsMock['auto_trade_config_v2']).enabled).toBe(true);
@@ -562,7 +562,7 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     // With minLevel='medium': high and medium signals pass, low does not
     autoTradeService.updateConfig({ minLevel: 'medium' });
     // Access private method via cast
@@ -580,7 +580,7 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     autoTradeService.setAllSymbols(['BTC','ETH','AAPL'], true);
     const cfg = autoTradeService.getConfig();
     expect(cfg.symbolsEnabled['BTC']).toBe(true);
@@ -599,7 +599,7 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     const svc = autoTradeService as any;
     svc.lastBuyTs.set('BTC', Date.now());
     expect(svc.lastBuyTs.size).toBe(1);
@@ -614,7 +614,7 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../src/services/autoTradeService?v=' + Math.random());
+    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
     autoTradeService.setEnabled(true);
     // BTC disabled
     const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high', score: 80, reasons: ['test'] }, sellSignal: { signal:false, level:null, score:0, reasons:[] }, prediction: { type:'neutral', probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
@@ -635,7 +635,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     expect(simulatedUserService.getStates().length).toBe(5);
   });
 
@@ -646,7 +646,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     const ids = simulatedUserService.getStates().map(s => s.user.id);
     expect(new Set(ids).size).toBe(5);
   });
@@ -658,7 +658,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     const ranking = simulatedUserService.getRanking(new Map());
     for (let i = 1; i < ranking.length; i++) {
       expect(ranking[i-1].pnlPct).toBeGreaterThanOrEqual(ranking[i].pnlPct);
@@ -672,7 +672,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     const firstUser = simulatedUserService.getStates()[0];
     simulatedUserService.setUserSymbols(firstUser.user.id, ['BTC']);
     const updated = simulatedUserService.getState(firstUser.user.id);
@@ -686,7 +686,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     const firstUser = simulatedUserService.getStates()[0];
     simulatedUserService.resetUser(firstUser.user.id);
     const state = simulatedUserService.getState(firstUser.user.id)!;
@@ -701,7 +701,7 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../src/services/simulatedUsers?v=' + Math.random());
+    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
     const contrarian = simulatedUserService.getStates().find(s => s.user.id === 'contrarian_zhou');
     expect(contrarian?.user.strategy.contrarian).toBe(true);
   });
@@ -748,7 +748,7 @@ describe('price display precision', () => {
 
 describe('indicators.ts — calculateAllIndicators', () => {
   it('returns object with expected fields', async () => {
-    const { calculateAllIndicators } = await import('../src/utils/indicators');
+    const { calculateAllIndicators } = await import('../utils/indicators');
     const ind = calculateAllIndicators(genCandles(80));
     expect(typeof ind.ema9).toBe('number');
     expect(typeof ind.ema21).toBe('number');
@@ -762,7 +762,7 @@ describe('indicators.ts — calculateAllIndicators', () => {
   });
 
   it('RSI is between 0 and 100', async () => {
-    const { calculateAllIndicators } = await import('../src/utils/indicators');
+    const { calculateAllIndicators } = await import('../utils/indicators');
     for (let i = 0; i < 5; i++) {
       const ind = calculateAllIndicators(genCandles(80));
       expect(ind.rsi9).toBeGreaterThanOrEqual(0);
@@ -773,13 +773,13 @@ describe('indicators.ts — calculateAllIndicators', () => {
   });
 
   it('ADX is non-negative', async () => {
-    const { calculateAllIndicators } = await import('../src/utils/indicators');
+    const { calculateAllIndicators } = await import('../utils/indicators');
     const ind = calculateAllIndicators(genCandles(80));
     expect(ind.adx).toBeGreaterThanOrEqual(0);
   });
 
   it('bollUp >= bollMb >= bollDn', async () => {
-    const { calculateAllIndicators } = await import('../src/utils/indicators');
+    const { calculateAllIndicators } = await import('../utils/indicators');
     for (let i = 0; i < 5; i++) {
       const ind = calculateAllIndicators(genCandles(80));
       if (ind.bollUp > 0) {
@@ -790,7 +790,7 @@ describe('indicators.ts — calculateAllIndicators', () => {
   });
 
   it('EMA9 reacts faster than EMA21 in bull trend', async () => {
-    const { calculateAllIndicators } = await import('../src/utils/indicators');
+    const { calculateAllIndicators } = await import('../utils/indicators');
     const bull = calculateAllIndicators(genBullCandles(80));
     // In uptrend, EMA9 should be above EMA21
     // Not always true immediately, but on prolonged uptrend it should be
@@ -810,21 +810,21 @@ describe('indicators.ts — calculateAllIndicators', () => {
 
 describe('edge cases', () => {
   it('all algorithms handle NaN price gracefully', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const badCandles = genCandles(80);
     badCandles[79] = { ...badCandles[79], price: NaN, close: NaN };
     expect(() => detectBuySignal(badCandles)).not.toThrow();
   });
 
   it('all algorithms handle 0-volume candles', async () => {
-    const { detectBuySignal } = await import('../src/utils/signals');
+    const { detectBuySignal } = await import('../utils/signals');
     const noVol = genCandles(80).map(c => ({ ...c, volume: 0 }));
     const result = detectBuySignal(noVol);
     expect(typeof result.score).toBe('number');
   });
 
   it('prediction handles all-same-price candles', async () => {
-    const { predictTopBottom } = await import('../src/utils/prediction');
+    const { predictTopBottom } = await import('../utils/prediction');
     const flat = Array(80).fill(null).map((_, i) => ({
       symbol:'FLAT', name:'Flat', price:100, close:100, open:100, high:100, low:100,
       volume:100000, change:0, changePercent:0, timestamp: Date.now() - (80-i) * 3600000,
@@ -833,7 +833,7 @@ describe('edge cases', () => {
   });
 
   it('calcDrawdown handles single trade', async () => {
-    const { calcTradeStats } = await import('../src/services/backtestStats');
+    const { calcTradeStats } = await import('../services/backtestStats');
     const single = [{ id:1, symbol:'A', side:'sell' as const, quantity:1, price:110, total:110, fee:0, date:Date.now(), pnl:10, pnlPercent:10 }];
     const stats = calcTradeStats(single);
     expect(stats).not.toBeNull();
