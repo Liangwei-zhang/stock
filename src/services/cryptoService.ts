@@ -52,11 +52,11 @@ export async function fetchCryptoKlines(
       low: Number(k[3]),
       volume: Number(k[5]),
       change: Number(k[4]) - Number(k[1]),
-      changePercent: ((Number(k[4]) - Number(k[1]) / Number(k[1])) * 100),
+      changePercent: ((Number(k[4]) - Number(k[1])) / Number(k[1])) * 100,
       timestamp: k[0],
     }));
   } catch (e) {
-    // error:(`Failed to fetch ${symbol} klines:`, e);
+    console.warn(`[cryptoService] Failed to fetch ${symbol} klines:`, e);
     return [];
   }
 }
@@ -90,7 +90,8 @@ export async function fetchCryptoTicker(symbol: string): Promise<{
       high24h: Number(data.highPrice),
       low24h: Number(data.lowPrice),
     };
-  } catch {
+  } catch (e) {
+    console.warn(`[cryptoService] Failed to fetch ${symbol} ticker:`, e);
     return null;
   }
 }
@@ -117,7 +118,8 @@ export async function fetchFundingRate(symbol: string): Promise<{
       rate: Number(data.lastFundingRate) * 100, // 轉換為百分比
       nextFundingTime: data.nextFundingTime,
     };
-  } catch {
+  } catch (e) {
+    console.warn(`[cryptoService] Failed to fetch ${symbol} funding rate:`, e);
     return null;
   }
 }
@@ -143,7 +145,8 @@ export async function fetchOrderBook(symbol: string, limit: number = 20): Promis
       bids: data.bids.map((b: string[]) => [Number(b[0]), Number(b[1])]),
       asks: data.asks.map((a: string[]) => [Number(a[0]), Number(a[1])]),
     };
-  } catch {
+  } catch (e) {
+    console.warn(`[cryptoService] Failed to fetch ${symbol} order book:`, e);
     return null;
   }
 }
