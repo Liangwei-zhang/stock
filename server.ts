@@ -18,13 +18,44 @@ const app  = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
+// 仅允许本地开发来源，防止跨站请求伪造
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://localhost:3001',
+]);
+
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin',  req.headers.origin ?? '*');
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  res.setHeader('Vary', 'Origin');
   if (req.method === 'OPTIONS') { res.sendStatus(204); return; }
   next();
 });
+
+// ─── API Key 鉴权（用于写入/删除等敏感端点）──────────────────────────────────
+const API_KEY = process.env.API_KEY ?? '';
+
+function requireApiKey(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  // 若未配置 API_KEY，则仅允许本地回环地址访问
+  const clientIp = (req.socket.remoteAddress ?? '').replace('::ffff:', '');
+  if (!API_KEY) {
+    if (clientIp === '127.0.0.1' || clientIp === '::1') { next(); return; }
+    res.status(403).json({ error: 'API_KEY not configured — only loopback allowed' });
+    return;
+  }
+  const provided = req.headers['x-api-key'];
+  if (provided !== API_KEY) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -39,6 +70,10 @@ async function initDB() {
     const dbDir    = path.join(process.cwd(), 'data');
     if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
     db = new Database(path.join(dbDir, 'market.db'));
+
+    // 启用 WAL 模式提升写入性能，FULL 同步防止崩溃时数据损坏
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = FULL');
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS ohlcv (
@@ -61,6 +96,12 @@ async function initDB() {
         exchange   TEXT,
         added_at   INTEGER
       );
+
+      CREATE TABLE IF NOT EXISTS alerts (
+        id         TEXT PRIMARY KEY,
+        data       TEXT NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch())
+      );
     `);
 
     console.log('✅ SQLite database ready: data/market.db');
@@ -72,7 +113,20 @@ async function initDB() {
   }
 }
 
-initDB().catch(console.error);
+initDB().then(() => {
+  // 從 SQLite 恢復持久化預警（伺服器重啟後不丟失）
+  if (db) {
+    try {
+      const rows = db.prepare(
+        `SELECT data FROM alerts ORDER BY created_at DESC LIMIT ${MAX_ALERTS}`
+      ).all() as { data: string }[];
+      alerts = rows.map(r => JSON.parse(r.data)).reverse();
+      console.log(`📋 Restored ${alerts.length} alert(s) from DB.`);
+    } catch (err: any) {
+      console.warn('⚠️  Failed to restore alerts from DB:', err?.message);
+    }
+  }
+}).catch(console.error);
 
 // ─── SSE 预警广播 ─────────────────────────────────────────────────────────────
 
@@ -104,6 +158,20 @@ app.post('/alerts', (req, res) => {
   if (alert?.id) {
     alerts = [alert, ...alerts].slice(0, MAX_ALERTS);
     broadcast({ type: 'update', alert });
+    if (db) {
+      try {
+        db.prepare('INSERT OR REPLACE INTO alerts (id, data) VALUES (?, ?)').run(
+          alert.id,
+          JSON.stringify(alert),
+        );
+        // 保留最近 MAX_ALERTS 筆，清理舊資料
+        db.prepare(
+          `DELETE FROM alerts WHERE id NOT IN (
+            SELECT id FROM alerts ORDER BY created_at DESC LIMIT ${MAX_ALERTS}
+          )`
+        ).run();
+      } catch { /* DB write failure is non-critical */ }
+    }
   }
   res.json({ success: true });
 });
@@ -111,18 +179,34 @@ app.post('/alerts', (req, res) => {
 app.delete('/alerts/:id', (req, res) => {
   alerts = alerts.filter(a => a.id !== req.params.id);
   broadcast({ type: 'delete', id: req.params.id });
+  if (db) {
+    try { db.prepare('DELETE FROM alerts WHERE id = ?').run(req.params.id); } catch { /* ignore */ }
+  }
   res.json({ success: true });
 });
 
 // ─── OHLCV 数据库 API ─────────────────────────────────────────────────────────
 
 /** 批量写入 K 线（幂等，重复 (symbol,timestamp) 忽略） */
-app.post('/db/ohlcv', (req, res) => {
+app.post('/db/ohlcv', requireApiKey, (req, res) => {
   if (!db) return res.status(503).json({ error: 'DB not available' });
 
   const records: any[] = req.body;
   if (!Array.isArray(records) || !records.length) {
     return res.status(400).json({ error: 'records must be a non-empty array' });
+  }
+
+  // 校验每条 K 线记录的必要字段，防止注入或残缺数据写入
+  for (const r of records) {
+    if (typeof r.symbol !== 'string' || !r.symbol.trim()) {
+      return res.status(400).json({ error: 'Each record must have a non-empty string symbol' });
+    }
+    if (typeof r.timestamp !== 'number' || !isFinite(r.timestamp) || r.timestamp <= 0) {
+      return res.status(400).json({ error: 'Each record must have a positive numeric timestamp' });
+    }
+    if (r.close !== undefined && (typeof r.close !== 'number' || !isFinite(r.close) || r.close < 0)) {
+      return res.status(400).json({ error: 'close must be a non-negative finite number' });
+    }
   }
 
   const stmt = db.prepare(`
@@ -156,7 +240,7 @@ app.get('/db/ohlcv/:symbol', (req, res) => {
 });
 
 /** 删除指定标的数据 */
-app.post('/db/ohlcv/:symbol/delete', (req, res) => {
+app.post('/db/ohlcv/:symbol/delete', requireApiKey, (req, res) => {
   if (!db) return res.json({ deleted: 0 });
   const count = db.prepare('DELETE FROM ohlcv WHERE symbol = ?').run(req.params.symbol);
   res.json({ deleted: count.changes });
@@ -203,7 +287,7 @@ app.get('/api/yahoo/:symbol', async (req, res) => {
 // ─── Telegram 通知代理 ────────────────────────────────────────────────────────
 // Server 端統一發送，避免 CORS 問題，且 Token 不暴露於前端
 
-app.post('/api/telegram', async (req, res) => {
+app.post('/api/telegram', requireApiKey, async (req, res) => {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId   = process.env.TELEGRAM_CHAT_ID;
 
@@ -213,17 +297,19 @@ app.post('/api/telegram', async (req, res) => {
   }
 
   const { message } = req.body ?? {};
-  if (!message) {
+  if (!message || typeof message !== 'string') {
     res.status(400).json({ success: false, reason: 'missing message' });
     return;
   }
+  // 限制消息长度（Telegram 最大 4096 字符）
+  const safeMessage = message.slice(0, 4096);
 
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
     const response = await fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
+      body:    JSON.stringify({ chat_id: chatId, text: safeMessage, parse_mode: 'Markdown' }),
     });
     if (!response.ok) {
       const body = await response.text();
@@ -265,4 +351,13 @@ app.listen(PORT, () => {
   console.log(`  Yahoo proxy → GET  /api/yahoo/:symbol`);
   console.log(`  DB stats    → GET  /db/stats`);
   console.log(`  Health      → GET  /health\n`);
+
+  // 啟動時檢查關鍵環境變數，提早發現配置問題
+  if (!process.env.API_KEY) {
+    console.warn('⚠️  [安全警告] API_KEY 未設定 — 寫入端點僅允許本機迴環訪問');
+    console.warn('   生產環境請在 .env 設定 API_KEY（建議使用 openssl rand -hex 32 產生）');
+  }
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.warn('⚠️  TELEGRAM_BOT_TOKEN 未設定 — Telegram 通知已停用');
+  }
 });

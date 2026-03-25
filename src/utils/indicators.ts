@@ -22,11 +22,11 @@ import { StockData, TechnicalIndicators } from '../types';
 const CACHE_CAP = 12;
 const cache     = new Map<string, TechnicalIndicators>();
 
-function cacheKey(data: StockData[]): string {
-  if (data.length === 0) return '0:0:0';
+function cacheKey(data: StockData[], symbol: string): string {
+  if (data.length === 0) return `${symbol}:0:0:0`;
   const last = data[data.length - 1];
-  // 用 length + close(4位小数) + timestamp 唯一标识一个数据集状态
-  return `${data.length}:${last.close.toFixed(4)}:${last.timestamp}`;
+  // 加入 symbol 避免不同標的哈希碰撞返回錯誤結果
+  return `${symbol}:${data.length}:${last.close.toFixed(4)}:${last.timestamp}`;
 }
 
 function cacheGet(key: string): TechnicalIndicators | undefined {
@@ -388,9 +388,9 @@ function _dm(highs: number[], lows: number[], i: number): [number, number] {
 //  主入口（带 LRU 缓存）
 // ═══════════════════════════════════════════════════════════════
 
-export function calculateAllIndicators(data: StockData[]): TechnicalIndicators {
+export function calculateAllIndicators(data: StockData[], symbol = ''): TechnicalIndicators {
   // ── 缓存命中 → 直接返回（Bug-4 修复核心）──
-  const key = cacheKey(data);
+  const key = cacheKey(data, symbol);
   const hit = cacheGet(key);
   if (hit) return hit;
 
@@ -464,10 +464,10 @@ function emptyIndicators(): TechnicalIndicators {
 // ─── 辅助（供 signals / prediction 调用）────────────────────────────────────
 
 /** getPreviousIndicators：调用 calculateAllIndicators 时自动命中缓存 */
-export function getPreviousIndicators(data: StockData[], offset = 1): TechnicalIndicators {
-  if (data.length <= offset) return calculateAllIndicators(data);
+export function getPreviousIndicators(data: StockData[], offset = 1, symbol = ''): TechnicalIndicators {
+  if (data.length <= offset) return calculateAllIndicators(data, symbol);
   // slice 创建新数组引用，但 cacheKey 基于内容（length+close+ts），不依赖引用
-  return calculateAllIndicators(data.slice(0, data.length - offset));
+  return calculateAllIndicators(data.slice(0, data.length - offset), symbol);
 }
 
 export function getAverageVolume(data: StockData[], period = 20): number {

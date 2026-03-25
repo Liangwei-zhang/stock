@@ -1,11 +1,23 @@
 /**
  * Stock Alert → Telegram Forwarder
  * 使用原生 fetch 監聽 SSE
+ *
+ * 執行方式（Node 20+）：
+ *   node --env-file=.env alert-listener.js
+ * 或先 export 環境變數後執行：
+ *   export TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=yyy
+ *   node alert-listener.js
  */
 
-const API_URL = 'http://localhost:3001';
-const TELEGRAM_BOT_TOKEN = '8585851488:AAFT7326kF79zgT-yVK6EEbxvic-MLTr1pg';
-const TELEGRAM_CHAT_ID = '6390423676';
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
+
+if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+  console.error('❌ 缺少環境變數：TELEGRAM_BOT_TOKEN 和 TELEGRAM_CHAT_ID 必須設定');
+  console.error('   請執行：node --env-file=.env alert-listener.js');
+  process.exit(1);
+}
 
 const processed = new Set();
 
@@ -32,9 +44,18 @@ async function sendTelegram(msg) {
 
 async function start() {
   console.log('🔌 連接中...');
-  
-  const res = await fetch(`${API_URL}/alerts-stream`);
-  const reader = res.body.getReader();
+
+  let reader;
+  try {
+    const res = await fetch(`${API_URL}/alerts-stream`);
+    reader = res.body.getReader();
+  } catch (e) {
+    console.error('❌ 無法連接伺服器:', e.message);
+    console.log('   5秒後重連...');
+    setTimeout(start, 5000);
+    return;
+  }
+
   const decoder = new TextDecoder();
   let buffer = '';
   

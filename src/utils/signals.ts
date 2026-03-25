@@ -36,6 +36,9 @@ function getTrendState(
   // ADX ≥ 20：有趋势强度
   const hasTrend = ind.adx >= 20;
 
+  // 注意：當 hasTrend=false（ADX < 20，橫盤市場）時條件為 true，
+  // 表示在趨勢強度不足時僅以 EMA 方向作為分類依據。
+  // 這是刻意設計：ADX 低時 DI± 噪音大，不適合做為過濾條件。
   if (emaAlignedBull && aboveMa20 && (hasTrend ? ind.diPlus > ind.diMinus : true)) return 'bull';
   if (emaAlignedBear && belowMa20 && (hasTrend ? ind.diMinus > ind.diPlus : true)) return 'bear';
   return 'sideways';
@@ -45,12 +48,12 @@ function getTrendState(
 //  买入信号
 // ═══════════════════════════════════════════════════════════════
 
-export function detectBuySignal(data: StockData[]): SignalResult {
+export function detectBuySignal(data: StockData[], symbol = ''): SignalResult {
   if (data.length < 60) return { signal: false, level: null, score: 0, reasons: [] };
 
-  const latest  = calculateAllIndicators(data);
-  const prev    = getPreviousIndicators(data, 1);
-  const prev2   = getPreviousIndicators(data, 2);
+  const latest  = calculateAllIndicators(data, symbol);
+  const prev    = getPreviousIndicators(data, 1, symbol);
+  const prev2   = getPreviousIndicators(data, 2, symbol);
   const cur     = data[data.length - 1];
   const pre1    = data[data.length - 2];
   const avgVol  = getAverageVolume(data, 20);
@@ -255,12 +258,12 @@ export function detectBuySignal(data: StockData[]): SignalResult {
 //  卖出信号
 // ═══════════════════════════════════════════════════════════════
 
-export function detectSellSignal(data: StockData[]): SignalResult {
+export function detectSellSignal(data: StockData[], symbol = ''): SignalResult {
   if (data.length < 60) return { signal: false, level: null, score: 0, reasons: [] };
 
-  const latest = calculateAllIndicators(data);
-  const prev   = getPreviousIndicators(data, 1);
-  const prev2  = getPreviousIndicators(data, 2);
+  const latest = calculateAllIndicators(data, symbol);
+  const prev   = getPreviousIndicators(data, 1, symbol);
+  const prev2  = getPreviousIndicators(data, 2, symbol);
   const cur    = data[data.length - 1];
   const pre1   = data[data.length - 2];
   const avgVol = getAverageVolume(data, 20);

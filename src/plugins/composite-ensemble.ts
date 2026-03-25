@@ -25,7 +25,7 @@ export class CompositeEnsemblePlugin implements IStrategyPlugin {
 
     const cur   = data[data.length - 1];
     const price = cur.price;
-    const ind   = calculateAllIndicators(data);
+    const ind   = calculateAllIndicators(data, symbol);
 
     // 取得所有其他已註冊插件
     const otherPlugins = pluginRegistry.list().filter(p => p.id !== this.id);

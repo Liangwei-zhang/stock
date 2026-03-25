@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ConfigProvider, theme, Layout, Typography, Tag, Button, Spin } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { alertService }     from './services/alertService';
@@ -61,10 +61,20 @@ const App: React.FC = () => {
   // ── 图表 Hook ───────────────────────────────────────────────────────────────
   const { setChartContainer } = useChart({ selectedStock, refreshKey });
 
-  // ── 衍生数据 ────────────────────────────────────────────────────────────────
-  const analysis     = selectedStock ? indicatorService.analyzeStock(selectedStock) : null;
-  const selectedMeta = selectedStock ? stockService.getSymbolMeta(selectedStock)   : null;
-  const selectedItem = watchlistItems.find(w => w.symbol === selectedStock);
+  // ── 衍生数据（useMemo 避免每次 render 都重算）──────────────────────────────
+  const analysis     = useMemo(
+    () => selectedStock ? indicatorService.analyzeStock(selectedStock) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedStock, refreshKey],
+  );
+  const selectedMeta = useMemo(
+    () => selectedStock ? stockService.getSymbolMeta(selectedStock) : null,
+    [selectedStock, refreshKey],  // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const selectedItem = useMemo(
+    () => watchlistItems.find(w => w.symbol === selectedStock),
+    [watchlistItems, selectedStock],
+  );
 
   const handleRemoveWithSelect = async (symbol: string, e: React.MouseEvent) => {
     e.stopPropagation();

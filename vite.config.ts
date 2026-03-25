@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const SERVER = process.env.VITE_SERVER_URL ?? 'http://localhost:3001';
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
     proxy: {
-      '/api':       'http://localhost:3001',
-      '/alerts':    'http://localhost:3001',
-      '/db':        'http://localhost:3001',
-      '/health':    'http://localhost:3001',
+      '/api':       SERVER,
+      '/alerts':    SERVER,
+      '/db':        SERVER,
+      '/health':    SERVER,
       '/binance-api': {
         target: 'https://api.binance.com',
         changeOrigin: true,

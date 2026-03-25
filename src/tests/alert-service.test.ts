@@ -42,7 +42,10 @@ describe('alertService.ts — AlertService', () => {
     vi.resetModules();
     // Mock serverBridge to avoid network calls
     vi.doMock('../services/serverBridge', () => ({
-      pushAlertToServer: vi.fn(),
+      pushAlertToServer:   vi.fn(),
+      sendTelegramViaServer: vi.fn(),
+      SERVER_URL:          'http://localhost:3001',
+      writeHeaders:        vi.fn(() => ({ 'Content-Type': 'application/json' })),
     }));
     // Mock fetch for Telegram (no env vars set in tests)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));

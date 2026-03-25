@@ -51,6 +51,7 @@ const DEFAULT_CONFIG: AutoTradeConfig = {
 };
 
 const LS_CONFIG_KEY   = 'auto_trade_config_v2';
+const LS_COOLDOWN_KEY = 'auto_trade_cooldown_v1';
 const MAX_EXECUTIONS  = 100;
 
 // ─── 服务 ─────────────────────────────────────────────────────────────────────
@@ -65,6 +66,7 @@ class AutoTradeService {
 
   constructor() {
     this.config = this.loadConfig();
+    this.restoreCooldowns();
   }
 
   // ── 配置持久化 ────────────────────────────────────────────────────────────
@@ -81,6 +83,27 @@ class AutoTradeService {
     try {
       localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(this.config));
     } catch (e) { console.warn('[autoTradeService] saveConfig 失敗:', e); }
+  }
+
+  private restoreCooldowns(): void {
+    try {
+      const raw = localStorage.getItem(LS_COOLDOWN_KEY);
+      if (!raw) return;
+      const entries: [string, number][] = JSON.parse(raw);
+      // 只恢復仍在冷却期内的条目
+      const now = Date.now();
+      for (const [sym, ts] of entries) {
+        if (now - ts < this.config.cooldownMs) {
+          this.lastBuyTs.set(sym, ts);
+        }
+      }
+    } catch { /* 静默忘记 */ }
+  }
+
+  private saveCooldowns(): void {
+    try {
+      localStorage.setItem(LS_COOLDOWN_KEY, JSON.stringify(Array.from(this.lastBuyTs.entries())));
+    } catch { /* 静默忘记 */ }
   }
 
   // ── 公开：配置修改 ────────────────────────────────────────────────────────
@@ -130,7 +153,12 @@ class AutoTradeService {
     try {
       for (const [symbol, analysis] of analyses) {
         if (!this.config.symbolsEnabled[symbol]) continue;
-        await this.evaluate(symbol, analysis);
+        try {
+          await this.evaluate(symbol, analysis);
+        } catch (e) {
+          // 单个标的评估失败不阻断其他标的
+          console.warn(`[autoTradeService] evaluate(${symbol}) 失败:`, e);
+        }
       }
     } finally {
       this.running = false;
@@ -221,6 +249,7 @@ class AutoTradeService {
           );
           if (result === 'success') {
             this.lastBuyTs.set(symbol, Date.now());
+            this.saveCooldowns();
           }
         } else {
           this.record({
@@ -276,6 +305,7 @@ class AutoTradeService {
   clearExecutions(): void {
     this.executions = [];
     this.lastBuyTs.clear(); // 同时重置冷却计时器
+    this.saveCooldowns();   // 同步清空持久化
     this.notify();
   }
 

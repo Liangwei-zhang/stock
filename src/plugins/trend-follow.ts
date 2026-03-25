@@ -49,7 +49,7 @@ export class TrendFollowPlugin implements IStrategyPlugin {
       return this.empty(symbol, data[data.length - 1]?.price ?? 0);
     }
 
-    const ind   = calculateAllIndicators(data);
+    const ind   = calculateAllIndicators(data, symbol);
     const cur   = data[data.length - 1];
     const price = cur.price;
 

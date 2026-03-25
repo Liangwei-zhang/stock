@@ -15,12 +15,13 @@
  */
 
 import type { IMarketDB, OHLCVRecord } from '../core/types';
+import { SERVER_URL, writeHeaders } from '../services/serverBridge';
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────
 
 const DB_NAME    = 'MarketDB_v3';
 const DB_VERSION = 1;
-const SERVER_URL = 'http://localhost:3001';
+// SERVER_URL 现己由 serverBridge 统一提供，避免重复定义
 
 /** 保留 6 个月的历史数据 */
 export const SIX_MONTHS_MS = 6 * 30 * 24 * 3600_000;
@@ -81,13 +82,22 @@ function idbTx(
   }));
 }
 
-// ─── 服务端 API 调用（失败静默）──────────────────────────────────────────────
+// ─── 服务端 API 调用（失败静默）───────────────────────────────────────────────────
+
+const FETCH_TIMEOUT_MS = 8_000; // 8秒超时防止服务端挂起时永久阻塞
+
+function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(tid));
+}
 
 async function serverPost(path: string, body: unknown): Promise<boolean> {
   try {
-    const res = await fetch(`${SERVER_URL}${path}`, {
+    const res = await fetchWithTimeout(`${SERVER_URL}${path}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: writeHeaders(),
       body:    JSON.stringify(body),
     });
     return res.ok;
@@ -96,7 +106,7 @@ async function serverPost(path: string, body: unknown): Promise<boolean> {
 
 async function serverGet<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${SERVER_URL}${path}`);
+    const res = await fetchWithTimeout(`${SERVER_URL}${path}`, { method: 'GET' });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }

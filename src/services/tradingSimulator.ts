@@ -173,12 +173,15 @@ class TradingSimulator {
       this.account.balance -= total + fee;
       const existing = this.account.positions.get(symbol);
       if (existing) {
-        const totalQty      = existing.quantity + quantity;
-        const avgPrice      = (existing.avgPrice * existing.quantity + price * quantity) / totalQty;
+        const totalQty  = existing.quantity + quantity;
+        const avgPrice  = (existing.avgPrice * existing.quantity + price * quantity) / totalQty;
+        const newSL     = avgPrice - atrValue * ATR_STOP_MULT;
+        const newTP     = avgPrice + atrValue * ATR_PROFIT_MULT;
+        // 確保 SL < entryPrice < TP，避免 ATR 劇烈變小時方向反轉
         existing.quantity   = totalQty;
         existing.avgPrice   = avgPrice;
-        existing.stopLoss   = avgPrice - atrValue * ATR_STOP_MULT;
-        existing.takeProfit = avgPrice + atrValue * ATR_PROFIT_MULT;
+        existing.stopLoss   = Math.min(newSL, avgPrice * 0.98);
+        existing.takeProfit = Math.max(newTP, avgPrice * 1.02);
       } else {
         this.account.positions.set(symbol, {
           symbol, name: symbol, quantity, avgPrice: price,

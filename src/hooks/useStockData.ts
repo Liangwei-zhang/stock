@@ -124,12 +124,25 @@ export function useStockData() {
       updateUI();
 
       const analyses = indicatorService.analyzeAllStocks(stockService.getAvailableStocks());
-      await autoTradeService.onMarketUpdate(analyses);
+      // 各 symbol 独立评估，单个失败不阻断其他
+      try {
+        await autoTradeService.onMarketUpdate(analyses);
+      } catch (e) {
+        console.warn('[useStockData] autoTradeService.onMarketUpdate 失败:', e);
+      }
       if (!mounted) return;
 
       const prices = new Map<string, number>(stockService.getStocks().map(s => [s.symbol, s.price]));
-      await tradingSimulator.checkStopLossTakeProfit(prices);
-      simulatedUserService.checkPositions(prices);
+      try {
+        await tradingSimulator.checkStopLossTakeProfit(prices);
+      } catch (e) {
+        console.warn('[useStockData] checkStopLossTakeProfit 失败:', e);
+      }
+      try {
+        simulatedUserService.checkPositions(prices);
+      } catch (e) {
+        console.warn('[useStockData] simulatedUserService.checkPositions 失败:', e);
+      }
     };
 
     const id = setInterval(tick, UPDATE_MS);
@@ -161,6 +174,8 @@ export function useStockData() {
 
   const handleRemove = useCallback(async (symbol: string) => {
     await stockService.removeSymbol(symbol);
+    // 清理该 symbol 的信号历史，防止 prevSignals Map 无限增长
+    prevSignals.current.delete(symbol);
     setWatchlistItems(stockService.getWatchlist());
     updateUI();
   }, [updateUI]);

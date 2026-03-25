@@ -9,6 +9,9 @@ dist/
 .env.local
 .env.*.local
 
+# Database files — contain market data, may be large
+data/
+
 # Editor
 .vscode/
 .idea/

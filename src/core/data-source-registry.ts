@@ -11,8 +11,9 @@
 import type { IDataSourceAdapter, DataSourceConfig, QuoteData } from './types';
 import type { AssetType, StockData } from '../types';
 
-const STORAGE_KEY  = 'datasource:config';
-const AVAIL_TTL_MS = 30_000;   // 30s 健康检查缓存
+const STORAGE_KEY    = 'datasource:config';
+const AVAIL_TTL_MS   = 30_000;   // 30s 健康检查缓存
+const PROBE_TIMEOUT  = 5_000;    // 单个适配器探活超时（防阻塞）
 
 class DataSourceRegistry {
   private adapters = new Map<string, IDataSourceAdapter>();
@@ -159,7 +160,11 @@ class DataSourceRegistry {
     if (cached && Date.now() < cached.expiresAt) return cached.ok;
 
     try {
-      const ok = await adapter.isAvailable();
+      // 加超时，防止慢适配器拖慢整条链
+      const timeoutP = new Promise<boolean>((_, reject) =>
+        setTimeout(() => reject(new Error('probe timeout')), PROBE_TIMEOUT),
+      );
+      const ok = await Promise.race([adapter.isAvailable(), timeoutP]);
       this.availCache.set(adapter.id, { ok, expiresAt: Date.now() + AVAIL_TTL_MS });
       return ok;
     } catch {

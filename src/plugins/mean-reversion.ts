@@ -23,8 +23,8 @@ export class MeanReversionPlugin implements IStrategyPlugin {
       return this.empty(symbol, data[data.length - 1]?.price ?? 0);
     }
 
-    const ind  = calculateAllIndicators(data);
-    const prev = getPreviousIndicators(data, 1);
+    const ind  = calculateAllIndicators(data, symbol);
+    const prev = getPreviousIndicators(data, 1, symbol);
     const cur  = data[data.length - 1];
     const price = cur.price;
 

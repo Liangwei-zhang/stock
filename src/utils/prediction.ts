@@ -43,7 +43,7 @@ export async function initPredictionSystem(symbol: string): Promise<void> {
   await poiManager.init(symbol);
 }
 
-export function predictTopBottom(data: StockData[]): PredictionResult {
+export function predictTopBottom(data: StockData[], symbol = ''): PredictionResult {
   // 需要足夠歷史數據
   if (!data || data.length < 65) {
     return {
@@ -64,7 +64,7 @@ export function predictTopBottom(data: StockData[]): PredictionResult {
     };
   }
 
-  const indicators = calculateAllIndicators(data);
+  const indicators = calculateAllIndicators(data, symbol);
   const atrPercent = calculateATRPercent(data);
   const fvgStatus = checkFVGStatus(data);
 

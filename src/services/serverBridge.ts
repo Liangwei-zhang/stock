@@ -8,7 +8,16 @@
  *  - 推送是 fire-and-forget：失败不会影响前端正常运行。
  */
 
-const SERVER_URL = 'http://localhost:3001';
+const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? 'http://localhost:3001';
+
+/** 从环境变量读取 API Key（VITE_API_KEY），用于需要鉴权的写入接口 */
+const API_KEY = import.meta.env.VITE_API_KEY ?? '';
+
+function writeHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (API_KEY) h['X-API-Key'] = API_KEY;
+  return h;
+}
 
 /** 将新预警推送给后端（非阻塞，失败静默） */
 export function pushAlertToServer(alert: unknown): void {
@@ -26,12 +35,14 @@ export function pushAlertToServer(alert: unknown): void {
 export function sendTelegramViaServer(message: string): void {
   fetch(`${SERVER_URL}/api/telegram`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: writeHeaders(),
     body:    JSON.stringify({ message }),
   }).catch(() => {
     // Server not running or Telegram not configured — silently ignore.
   });
 }
+
+export { SERVER_URL, writeHeaders };
 
 /** 从后端拉取当前预警列表（可选，用于初始化时同步外部数据） */
 export async function getAlertsFromServer(): Promise<unknown[]> {

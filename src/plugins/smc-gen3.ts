@@ -81,7 +81,7 @@ export class SMCGen3Plugin implements IStrategyPlugin {
       return empty;
     }
 
-    const indicators = calculateAllIndicators(data);
+    const indicators = calculateAllIndicators(data, symbol);
 
     // 买卖信号（使用当前配置的阈值）
     const rawBuy  = detectBuySignal(data);

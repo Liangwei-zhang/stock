@@ -60,11 +60,21 @@ class PluginRegistry {
     const plugin = this.plugins.get(id);
     if (!plugin) throw new Error(`Plugin "${id}" not registered`);
 
+    const previousId = this.activeId;
     this.activeId = id;
     localStorage.setItem(STORAGE_KEY_ACTIVE, id);
 
     if (plugin.init && currentSymbol) {
-      await plugin.init(currentSymbol);
+      try {
+        await plugin.init(currentSymbol);
+      } catch (err) {
+        // 初始化失败：回滚到上一个插件，避免使用损坏状态的插件
+        console.error(`[PluginRegistry] plugin "${id}" init() failed, reverting to "${previousId}":`, err);
+        this.activeId = previousId;
+        localStorage.setItem(STORAGE_KEY_ACTIVE, previousId);
+        this.notifyChange();
+        throw err;
+      }
     }
 
     this.notifyChange();
