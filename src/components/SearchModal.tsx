@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input, Tag, Typography, Spin, Empty, Button } from 'antd';
 import { SearchOutlined, PlusOutlined, CheckOutlined, StarOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { SearchResult } from '../types';
 import { searchSymbols, assetTypeLabel, assetTypeColor, POPULAR_ASSETS } from '../services/searchService';
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAdd }) => {
+  const { t } = useTranslation();
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState<SearchResult[]>(POPULAR_ASSETS);
   const [loading,  setLoading]  = useState(false);
@@ -47,10 +49,10 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
   const categories = query.trim()
     ? null
     : [
-        { label: '🏆 热门股票',     items: POPULAR_ASSETS.filter(a => a.assetType === 'equity') },
-        { label: '📦 期货 (贵金属 / 大宗商品)', items: POPULAR_ASSETS.filter(a => a.assetType === 'futures') },
-        { label: '📊 ETF',           items: POPULAR_ASSETS.filter(a => a.assetType === 'etf') },
-        { label: '📈 指数',           items: POPULAR_ASSETS.filter(a => a.assetType === 'index') },
+        { label: t('search.hotStocks'),  items: POPULAR_ASSETS.filter(a => a.assetType === 'equity') },
+        { label: t('search.futures'),    items: POPULAR_ASSETS.filter(a => a.assetType === 'futures') },
+        { label: t('search.etf'),        items: POPULAR_ASSETS.filter(a => a.assetType === 'etf') },
+        { label: t('search.indices'),    items: POPULAR_ASSETS.filter(a => a.assetType === 'index') },
       ];
 
   const renderItem = (item: SearchResult) => {
@@ -92,7 +94,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
           onClick={() => { if (!added) { onAdd(item); } }}
           style={{ minWidth: 64 }}
         >
-          {added ? '已添加' : '添加'}
+          {added ? t('common.added') : t('common.add')}
         </Button>
       </div>
     );
@@ -124,7 +126,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
           <Input
             ref={inputRef}
             prefix={<SearchOutlined style={{ color: '#8b949e' }} />}
-            placeholder="搜索股票代码或名称 (如 NVDA、黄金、Gold、GC=F…)"
+            placeholder={t('search.placeholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
             allowClear
@@ -132,7 +134,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
           />
           <Text style={{ color: '#586069', fontSize: 12, marginTop: 6, display: 'block' }}>
-            支持：A/美股、ETF、黄金/白银/石油期货、指数等
+            {t('search.hint')}
           </Text>
         </div>
 
@@ -140,7 +142,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           {loading && (
             <div style={{ textAlign: 'center', padding: 32 }}>
-              <Spin size="small" /> <Text style={{ color: '#8b949e', marginLeft: 8 }}>搜索中…</Text>
+              <Spin size="small" /> <Text style={{ color: '#8b949e', marginLeft: 8 }}>{t('common.searching')}</Text>
             </div>
           )}
 
@@ -155,14 +157,14 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
 
           {!loading && query.trim() && (
             results.length === 0
-              ? <Empty description={<span style={{ color: '#586069' }}>未找到相关资产</span>} />
+              ? <Empty description={<span style={{ color: '#586069' }}>{t('common.noResult')}</span>} />
               : results.map(renderItem)
           )}
         </div>
 
         {/* ── 底部关闭 ── */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'right' }}>
-          <Button onClick={onClose}>关闭</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
         </div>
       </div>
     </div>

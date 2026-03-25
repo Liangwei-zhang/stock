@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography, Card, Tag, Badge, Button, Space } from 'antd';
 import { CloseOutlined, CheckOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { alertService } from '../services/alertService';
 import { Alert } from '../types';
 
@@ -20,20 +21,22 @@ interface Props {
   onClose:     () => void;
 }
 
-export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) => (
+export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) => {
+  const { t } = useTranslation();
+  return (
   <div className="alert-overlay" onClick={onClose}>
     <div className="alert-panel" onClick={e => e.stopPropagation()}>
 
       <div className="alert-header">
         <Text strong style={{ color: '#e6edf3' }}>
-          预警通知
+          {t('alerts.notifications')}
           {unreadCount > 0 && <Badge count={unreadCount} style={{ marginLeft: 6 }}/>}
         </Text>
         <Space>
           <Button type="text" size="small" icon={<CheckOutlined/>}
-            onClick={() => alertService.markAllAsRead()}>全部已读</Button>
+            onClick={() => alertService.markAllAsRead()}>{t('alerts.markAllRead')}</Button>
           <Button type="text" size="small" icon={<DeleteOutlined/>}
-            onClick={() => alertService.clearAlerts()}>清空</Button>
+            onClick={() => alertService.clearAlerts()}>{t('alerts.clear')}</Button>
           <Button type="text" size="small" icon={<CloseOutlined/>} onClick={onClose}/>
         </Space>
       </div>
@@ -42,7 +45,7 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
         {alerts.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">🔔</div>
-            <Text style={{ color: '#484f58', fontSize: 12 }}>暂无预警通知</Text>
+            <Text style={{ color: '#484f58', fontSize: 12 }}>{t('alerts.noAlerts')}</Text>
           </div>
         ) : alerts.map(alert => (
           <Card
@@ -59,13 +62,13 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
                 color={alert.level === 'high' ? 'red' : alert.level === 'medium' ? 'orange' : 'blue'}
                 style={{ margin: 0, fontSize: 10 }}
               >
-                {alert.level === 'high' ? '高' : alert.level === 'medium' ? '中' : '低'}
+                {alert.level === 'high' ? t('alerts.high') : alert.level === 'medium' ? t('alerts.medium') : t('alerts.low')}
               </Tag>
               <span className="alert-time">{fmtTime(alert.timestamp)}</span>
             </div>
             <div className="alert-type">
-              {alert.type === 'buy' ? '买入' : alert.type === 'sell' ? '卖出' : alert.type === 'top' ? '顶部' : '底部'}信号
-              · ${alert.price.toFixed(alert.price >= 100 ? 2 : 4)} · {alert.score}分
+              {alert.type === 'buy' ? t('alerts.buy') : alert.type === 'sell' ? t('alerts.sell') : alert.type === 'top' ? t('alerts.top') : t('alerts.bottom')}{t('alerts.signalSuffix')}
+              · ${alert.price.toFixed(alert.price >= 100 ? 2 : 4)} · {t('alerts.scorePt', { score: alert.score })}
             </div>
             <div className="alert-reasons">
               {alert.reasons.slice(0, 3).map((r, i) =>
@@ -78,4 +81,5 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
 
     </div>
   </div>
-);
+  );
+};
