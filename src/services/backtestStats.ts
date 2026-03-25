@@ -83,7 +83,7 @@ export function calcTradeStats(trades: Trade[]): TradeStats | null {
   for (const pnl of pnls.slice().reverse()) { // 按时间正序
     equity += pnl;
     if (equity > peak) peak = equity;
-    const dd = peak > 0 ? (peak - equity) / peak : 0;
+    const dd = peak > 0 ? Math.min(1, (peak - equity) / peak) : 0;
     if (dd > maxDD) maxDD = dd;
   }
 
