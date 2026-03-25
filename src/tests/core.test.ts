@@ -357,7 +357,8 @@ describe('tradingSimulator — account management', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const mod = await import('../services/tradingSimulator?v=' + Math.random());
+    vi.resetModules();
+    const mod = await import('../services/tradingSimulator');
     simulator = mod.tradingSimulator;
     await simulator.reset(100_000);
   });
@@ -538,7 +539,8 @@ describe('autoTradeService — configuration', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     expect(autoTradeService.getConfig().enabled).toBe(false);
   });
 
@@ -549,7 +551,8 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setEnabled(true);
     expect(lsMock['auto_trade_config_v2']).toBeDefined();
     expect(JSON.parse(lsMock['auto_trade_config_v2']).enabled).toBe(true);
@@ -562,7 +565,8 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     // With minLevel='medium': high and medium signals pass, low does not
     autoTradeService.updateConfig({ minLevel: 'medium' });
     // Access private method via cast
@@ -580,7 +584,8 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setAllSymbols(['BTC','ETH','AAPL'], true);
     const cfg = autoTradeService.getConfig();
     expect(cfg.symbolsEnabled['BTC']).toBe(true);
@@ -599,7 +604,8 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     const svc = autoTradeService as any;
     svc.lastBuyTs.set('BTC', Date.now());
     expect(svc.lastBuyTs.size).toBe(1);
@@ -614,7 +620,8 @@ describe('autoTradeService — configuration', () => {
       setItem: (k: string, v: string) => { lsMock[k] = v; },
       removeItem: (k: string) => { delete lsMock[k]; },
     });
-    const { autoTradeService } = await import('../services/autoTradeService?v=' + Math.random());
+    vi.resetModules();
+    const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setEnabled(true);
     // BTC disabled
     const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high', score: 80, reasons: ['test'] }, sellSignal: { signal:false, level:null, score:0, reasons:[] }, prediction: { type:'neutral', probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
@@ -635,7 +642,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     expect(simulatedUserService.getStates().length).toBe(5);
   });
 
@@ -646,7 +654,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     const ids = simulatedUserService.getStates().map(s => s.user.id);
     expect(new Set(ids).size).toBe(5);
   });
@@ -658,7 +667,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     const ranking = simulatedUserService.getRanking(new Map());
     for (let i = 1; i < ranking.length; i++) {
       expect(ranking[i-1].pnlPct).toBeGreaterThanOrEqual(ranking[i].pnlPct);
@@ -672,7 +682,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     const firstUser = simulatedUserService.getStates()[0];
     simulatedUserService.setUserSymbols(firstUser.user.id, ['BTC']);
     const updated = simulatedUserService.getState(firstUser.user.id);
@@ -686,7 +697,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     const firstUser = simulatedUserService.getStates()[0];
     simulatedUserService.resetUser(firstUser.user.id);
     const state = simulatedUserService.getState(firstUser.user.id)!;
@@ -701,7 +713,8 @@ describe('simulatedUsers — service', () => {
       setItem(k: string, v: string) { this._store[k] = v; },
       removeItem(k: string) { delete this._store[k]; },
     });
-    const { simulatedUserService } = await import('../services/simulatedUsers?v=' + Math.random());
+    vi.resetModules();
+    const { simulatedUserService } = await import('../services/simulatedUsers');
     const contrarian = simulatedUserService.getStates().find(s => s.user.id === 'contrarian_zhou');
     expect(contrarian?.user.strategy.contrarian).toBe(true);
   });
@@ -723,12 +736,12 @@ describe('price display precision', () => {
     expect(fmtPrice(3245.80)).toBe('3245.80');
   });
 
-  it('DOGE at 0.15 shows 4 decimals', () => {
-    expect(fmtPrice(0.15)).toBe('0.1500');
+  it('DOGE at 0.15 shows 6 decimals', () => {
+    expect(fmtPrice(0.15)).toBe('0.150000');
   });
 
-  it('sub-cent token at 0.005 shows 6 decimals', () => {
-    expect(fmtPrice(0.005)).toBe('0.005000');
+  it('sub-cent token at 0.005 shows 8 decimals', () => {
+    expect(fmtPrice(0.005)).toBe('0.00500000');
   });
 
   it('SHIB at 0.00002 shows 8 decimals (not 0.0000)', () => {
