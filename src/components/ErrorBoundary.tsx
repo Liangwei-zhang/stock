@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  private clearAllCache(): void {
+  private clearAllCache = (): void => {
     // Clear known state keys
     ['trading_simulator_v2', 'auto_trade_config_v2'].forEach(k => localStorage.removeItem(k));
     // Clear all sim_user_* keys
@@ -63,7 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <Button type="primary" key="reload" onClick={() => window.location.reload()}>
                 重新加載
               </Button>,
-              <Button key="reset" onClick={this.clearAllCache.bind(this)}>
+              <Button key="reset" onClick={this.clearAllCache}>
                 清空緩存並重載
               </Button>,
             ]}

@@ -168,7 +168,7 @@ html, body, #root {
 .chart-legend { display: flex; gap: 12px; align-items: center; }
 .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-.chart-container { height: min(360px, 40vh); }
+.chart-container { height: min(360px, 40vh); min-height: 180px; }
 
 /* ── ANALYSIS GRID ── */
 .analysis-grid {

@@ -33,7 +33,7 @@ const Sparkline: React.FC<{ symbol: string }> = ({ symbol }) => {
   const prices = useMemo(() => {
     const history = stockService.getStockHistory(symbol);
     return history.slice(-20).map(d => d.close ?? d.price);
-  }, [symbol]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [symbol]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

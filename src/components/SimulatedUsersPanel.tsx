@@ -124,7 +124,11 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
     const profitCurve = React.useMemo(() => {
       const points: number[] = [0];
       let cum = 0;
-      for (const t of [...state.trades].reverse()) { cum += t.pnl; points.push(cum); }
+      // Iterate backwards (oldest first) without creating a reversed copy
+      for (let i = state.trades.length - 1; i >= 0; i--) {
+        cum += state.trades[i].pnl;
+        points.push(cum);
+      }
       return points.slice(-20);
     }, [state.trades]);
 
