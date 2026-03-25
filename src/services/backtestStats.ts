@@ -89,12 +89,12 @@ export function calcTradeStats(trades: Trade[]): TradeStats | null {
     if (dd > maxDD) maxDD = dd;
   }
 
-  // 简化 Sharpe（日收益率标准差估算）
+  // 簡化 Sharpe：以每筆交易盈虧為觀測值，sqrt(252) 為年化因子（非嚴格日收益率，僅供趨勢參考）
+  // 注意：此處 avgPnL 為絕對金額，非百分比收益率，結果為相對比較指標
   const avgPnL = totalPnL / pnls.length;
   const variance = pnls.reduce((acc, p) => acc + (p - avgPnL) ** 2, 0) / pnls.length;
   const stdDev = Math.sqrt(variance);
-  const dailyRiskFree = 0.04 / 252;
-  const sharpe = stdDev > 0 ? ((avgPnL - dailyRiskFree) / stdDev) * Math.sqrt(252) : 0;
+  const sharpe = stdDev > 0 ? (avgPnL / stdDev) * Math.sqrt(252) : 0;
 
   // 按退出原因统计
   const byExit = {

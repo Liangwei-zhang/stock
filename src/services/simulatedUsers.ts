@@ -491,6 +491,8 @@ function closeTrade(
   };
 
   state.trades.unshift(trade);
+  // 上限 500 筆，防止 localStorage 容量耗盡（5 用戶 × 500 筆 × ~200B ≈ 500KB）
+  if (state.trades.length > 500) state.trades.pop();
   state.positions.delete(symbol);
 
   const action = exitReason === 'stop_loss' ? 'close_sl'

@@ -44,6 +44,7 @@ export function detectFVG(data: StockData[], maxAge: number = 5): FVG[] {
 
     // 向上 FVG：第 N 根的低點高於第 N-2 根的高點（價格跳空上漲）
     if (cur.low > prev2.high) {
+      if (prev2.high <= 0) continue;  // 防止除以零（損毀數據防護）
       const gap = cur.low - prev2.high;
       const gapPercent = (gap / prev2.high) * 100;
       
@@ -65,6 +66,7 @@ export function detectFVG(data: StockData[], maxAge: number = 5): FVG[] {
 
     // 向下 FVG：第 N 根的高點低於第 N-2 根的低點（價格跳空下跌）
     if (cur.high < prev2.low) {
+      if (prev2.low <= 0) continue;  // 防止除以零（損毀數據防護）
       const gap = prev2.low - cur.high;
       const gapPercent = (gap / prev2.low) * 100;
       
