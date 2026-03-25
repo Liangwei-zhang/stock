@@ -10,14 +10,18 @@
 import { pluginRegistry } from '../core/plugin-registry';
 import { SMCGen3Plugin }  from './smc-gen3';
 import { TrendFollowPlugin } from './trend-follow';
+import { MeanReversionPlugin } from './mean-reversion';
+import { VolumeBreakoutPlugin } from './volume-breakout';
+import { MacdCrossoverPlugin } from './macd-crossover';
+import { CompositeEnsemblePlugin } from './composite-ensemble';
 
 // ── 注册所有插件 ──────────────────────────────────────────────────────────────
 pluginRegistry.register(new SMCGen3Plugin());
 pluginRegistry.register(new TrendFollowPlugin());
-
-// 后续添加：
-// pluginRegistry.register(new MeanReversionPlugin());
-// pluginRegistry.register(new MLStrategyPlugin());
+pluginRegistry.register(new MeanReversionPlugin());
+pluginRegistry.register(new VolumeBreakoutPlugin());
+pluginRegistry.register(new MacdCrossoverPlugin());
+pluginRegistry.register(new CompositeEnsemblePlugin());
 
 // ── 从持久化恢复上次选中的插件 ──────────────────────────────────────────────
 pluginRegistry.bootstrap();
