@@ -185,6 +185,7 @@ const DEFAULT_USERS: SimulatedUser[] = [
 const FEE_RATE       = 0.001;   // 0.1% 手续费
 const DEFAULT_ATR    = 0.015;   // 无 ATR 数据时默认 1.5%
 const LOG_MAX        = 60;      // 每个用户保留最近 60 条日志
+const TRADE_MAX      = 500;     // 每個用戶交易歷史上限
 const LS_KEY_PREFIX  = 'sim_user_';
 
 // ─── 工具 ─────────────────────────────────────────────────────────────────────
@@ -238,7 +239,9 @@ function persist(state: SimUserState): void {
       trades:         state.trades,
     };
     localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
-  } catch {}
+  } catch (err) {
+    console.warn(`[SimulatedUsers] persist(${state.user.id}) failed:`, err);
+  }
 }
 
 function restore(user: SimulatedUser, initBalance: number): SimUserState {
@@ -461,6 +464,7 @@ function closeTrade(
   };
 
   state.trades.unshift(trade);
+  if (state.trades.length > TRADE_MAX) state.trades.length = TRADE_MAX;
   state.positions.delete(symbol);
 
   const action = exitReason === 'stop_loss' ? 'close_sl'

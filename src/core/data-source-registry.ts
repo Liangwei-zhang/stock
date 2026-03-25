@@ -6,6 +6,7 @@
  *  - 支持手动覆盖（某类资产固定用某个源）
  *  - 适配器可用性缓存 30s（避免每次请求都探测）
  *  - 失败自动降级到下一个适配器
+ *  - 熔斷器（Circuit Breaker）：連續失敗超過閾值時暫停數據源
  */
 
 import type { IDataSourceAdapter, DataSourceConfig, QuoteData } from './types';
@@ -14,11 +15,38 @@ import type { AssetType, StockData } from '../types';
 const STORAGE_KEY  = 'datasource:config';
 const AVAIL_TTL_MS = 30_000;   // 30s 健康检查缓存
 
+// ─── 熔斷器狀態 ──────────────────────────────────────────────────────────────
+
+const CIRCUIT_FAIL_THRESHOLD = 5;          // 連續失敗 5 次打開熔斷器
+const CIRCUIT_RESET_MS       = 60_000;     // 60s 後嘗試半開
+
+interface CircuitState {
+  failCount:       number;
+  openAt:          number | null;   // 熔斷器打開的時間戳（null = 關閉/正常）
+  lastSuccessAt:   number;
+  totalRequests:   number;
+  totalFailures:   number;
+}
+
+// ─── 健康狀態（可供 UI 查詢）──────────────────────────────────────────────────
+
+export interface AdapterHealth {
+  id:            string;
+  name:          string;
+  circuitOpen:   boolean;
+  failCount:     number;
+  lastSuccessAt: number;
+  successRate:   number;   // 0-1
+}
+
 class DataSourceRegistry {
   private adapters = new Map<string, IDataSourceAdapter>();
 
   /** 可用性缓存: id → { available, expiresAt } */
   private availCache = new Map<string, { ok: boolean; expiresAt: number }>();
+
+  /** 熔斷器狀態 */
+  private circuits  = new Map<string, CircuitState>();
 
   private config: DataSourceConfig = { overrides: {}, disabled: [] };
 
@@ -30,11 +58,15 @@ class DataSourceRegistry {
 
   register(adapter: IDataSourceAdapter): void {
     this.adapters.set(adapter.id, adapter);
+    if (!this.circuits.has(adapter.id)) {
+      this.circuits.set(adapter.id, { failCount: 0, openAt: null, lastSuccessAt: 0, totalRequests: 0, totalFailures: 0 });
+    }
   }
 
   unregister(id: string): void {
     this.adapters.delete(id);
     this.availCache.delete(id);
+    this.circuits.delete(id);
   }
 
   // ── 配置 ───────────────────────────────────────────────────────────────────
@@ -66,6 +98,22 @@ class DataSourceRegistry {
     this.availCache.delete(adapterId);
   }
 
+  // ── 健康狀態查詢 ───────────────────────────────────────────────────────────
+
+  getHealth(): AdapterHealth[] {
+    return [...this.adapters.values()].map(a => {
+      const c = this.circuits.get(a.id) ?? { failCount: 0, openAt: null, lastSuccessAt: 0, totalRequests: 0, totalFailures: 0 };
+      return {
+        id:            a.id,
+        name:          a.name,
+        circuitOpen:   this.isCircuitOpen(a.id),
+        failCount:     c.failCount,
+        lastSuccessAt: c.lastSuccessAt,
+        successRate:   c.totalRequests > 0 ? (c.totalRequests - c.totalFailures) / c.totalRequests : 1,
+      };
+    });
+  }
+
   // ── 选择适配器 ─────────────────────────────────────────────────────────────
 
   /**
@@ -77,7 +125,7 @@ class DataSourceRegistry {
     const overrideId = this.config.overrides[assetType];
     if (overrideId) {
       const adapter = this.adapters.get(overrideId);
-      if (adapter && !this.config.disabled.includes(overrideId)) {
+      if (adapter && !this.config.disabled.includes(overrideId) && !this.isCircuitOpen(overrideId)) {
         return [adapter];
       }
     }
@@ -85,6 +133,7 @@ class DataSourceRegistry {
     // 所有支持该 assetType 的适配器，按 priority 排序
     const candidates = [...this.adapters.values()]
       .filter(a => !this.config.disabled.includes(a.id))
+      .filter(a => !this.isCircuitOpen(a.id))
       .filter(a => a.supportedAssetTypes.includes(assetType) || a.supportedAssetTypes.includes('other'))
       .sort((a, b) => a.priority - b.priority);
 
@@ -108,11 +157,16 @@ class DataSourceRegistry {
     const errors: string[] = [];
 
     for (const adapter of chain) {
+      this.recordRequest(adapter.id);
       try {
         const data = await adapter.fetchHistory(symbol);
-        if (data.length > 0) return data;
+        if (data.length > 0) {
+          this.recordSuccess(adapter.id);
+          return data;
+        }
       } catch (err) {
         errors.push(`${adapter.id}: ${err}`);
+        this.recordFailure(adapter.id);
         this.invalidateAvailability(adapter.id);
       }
     }
@@ -130,11 +184,16 @@ class DataSourceRegistry {
     const chain = await this.getAdapterChain(assetType);
 
     for (const adapter of chain) {
+      this.recordRequest(adapter.id);
       try {
         const quote = await adapter.fetchQuote(symbol);
-        if (quote) return quote;
+        if (quote) {
+          this.recordSuccess(adapter.id);
+          return quote;
+        }
       } catch (err) {
         console.warn(`[DataSourceRegistry] fetchQuote(${symbol}) ${adapter.id} failed:`, err);
+        this.recordFailure(adapter.id);
         this.invalidateAvailability(adapter.id);
       }
     }
@@ -142,14 +201,53 @@ class DataSourceRegistry {
   }
 
   /** 列出所有已注册适配器的状态摘要 */
-  listAdapters(): { id: string; name: string; priority: number; disabled: boolean; assetTypes: AssetType[] }[] {
+  listAdapters(): { id: string; name: string; priority: number; disabled: boolean; assetTypes: AssetType[]; circuitOpen: boolean }[] {
     return [...this.adapters.values()].map(a => ({
-      id:         a.id,
-      name:       a.name,
-      priority:   a.priority,
-      disabled:   this.config.disabled.includes(a.id),
-      assetTypes: a.supportedAssetTypes,
+      id:          a.id,
+      name:        a.name,
+      priority:    a.priority,
+      disabled:    this.config.disabled.includes(a.id),
+      assetTypes:  a.supportedAssetTypes,
+      circuitOpen: this.isCircuitOpen(a.id),
     }));
+  }
+
+  // ── 熔斷器內部方法 ─────────────────────────────────────────────────────────
+
+  private isCircuitOpen(id: string): boolean {
+    const c = this.circuits.get(id);
+    if (!c || c.openAt === null) return false;
+    // 超過重置時間後進入半開狀態（允許一次試探）
+    if (Date.now() - c.openAt > CIRCUIT_RESET_MS) {
+      c.openAt = null;   // 半開：允許下一次請求
+      c.failCount = 0;
+      return false;
+    }
+    return true;
+  }
+
+  private recordRequest(id: string): void {
+    const c = this.circuits.get(id);
+    if (c) c.totalRequests++;
+  }
+
+  private recordSuccess(id: string): void {
+    const c = this.circuits.get(id);
+    if (!c) return;
+    c.failCount     = 0;
+    c.openAt        = null;
+    c.lastSuccessAt = Date.now();
+  }
+
+  private recordFailure(id: string): void {
+    const c = this.circuits.get(id);
+    if (!c) return;
+    c.failCount++;
+    c.totalFailures++;
+    if (c.failCount >= CIRCUIT_FAIL_THRESHOLD && c.openAt === null) {
+      c.openAt = Date.now();
+      console.warn(`[DataSourceRegistry] Circuit breaker OPEN for ${id} (${c.failCount} consecutive failures)`);
+    }
   }
 
   // ── 内部 ───────────────────────────────────────────────────────────────────

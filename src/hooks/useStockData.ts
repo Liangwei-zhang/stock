@@ -104,34 +104,60 @@ export function useStockData() {
     if (!initialized) return;
     updateUI();
     let mounted = true;
+    let tickTimer: ReturnType<typeof setTimeout> | null = null;
 
     autoTradeService.setOnChange(() => { if (mounted) setRefreshKey(k => k + 1); });
     tradingSimulator.setOnUpdate(() => { if (mounted) setRefreshKey(k => k + 1); });
 
-    const tick = async () => {
-      await stockService.updateStocks();
+    const scheduleTick = () => {
       if (!mounted) return;
-      updateUI();
+      tickTimer = setTimeout(async () => {
+        if (!mounted) return;
 
-      const analyses = indicatorService.analyzeAllStocks(stockService.getAvailableStocks());
-      await autoTradeService.onMarketUpdate(analyses);
-      if (!mounted) return;
+        // 超時保護：單次 tick 超過 30s 自動放棄
+        const timeoutId = setTimeout(() => {
+          console.warn('[useStockData] tick timeout (>30s), scheduling next');
+          if (mounted) scheduleTick();
+        }, 30_000);
 
-      const prices = new Map<string, number>(stockService.getStocks().map(s => [s.symbol, s.price]));
-      await tradingSimulator.checkStopLossTakeProfit(prices);
-      simulatedUserService.checkPositions(prices);
+        try {
+          await stockService.updateStocks();
+          if (!mounted) return;
+          updateUI();
+
+          const analyses = indicatorService.analyzeAllStocks(stockService.getAvailableStocks());
+          await autoTradeService.onMarketUpdate(analyses);
+          if (!mounted) return;
+
+          const prices = new Map<string, number>(stockService.getStocks().map(s => [s.symbol, s.price]));
+          await tradingSimulator.checkStopLossTakeProfit(prices);
+          simulatedUserService.checkPositions(prices);
+        } catch (err) {
+          console.warn('[useStockData] tick error:', err);
+        } finally {
+          clearTimeout(timeoutId);
+          if (mounted) scheduleTick();
+        }
+      }, UPDATE_MS);
     };
 
-    const id = setInterval(tick, UPDATE_MS);
+    scheduleTick();
+
     return () => {
       mounted = false;
-      clearInterval(id);
+      if (tickTimer !== null) clearTimeout(tickTimer);
       autoTradeService.setOnChange(() => {});
       tradingSimulator.setOnUpdate(() => {});
     };
   }, [initialized, updateUI]);
 
   // ─── 添加 / 移除 symbol ───────────────────────────────────────────────────
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const handleAdd = useCallback(async (result: { symbol: string; name: string; assetType: any; exchange: string }) => {
     const item: WatchlistItem = {
       symbol:    result.symbol,
@@ -143,10 +169,10 @@ export function useStockData() {
     await stockService.addSymbol(item);
     setWatchlistItems(stockService.getWatchlist());
     updateUI();
-    // 后台真实历史通常 2-8s 后到达，分三波刷新
-    setTimeout(updateUI, 2000);
-    setTimeout(updateUI, 5000);
-    setTimeout(updateUI, 10000);
+    // 后台真实历史通常 2-8s 后到达，分三波刷新（組件卸載時跳過）
+    setTimeout(() => { if (mountedRef.current) updateUI(); }, 2000);
+    setTimeout(() => { if (mountedRef.current) updateUI(); }, 5000);
+    setTimeout(() => { if (mountedRef.current) updateUI(); }, 10000);
   }, [updateUI]);
 
   const handleRemove = useCallback(async (symbol: string) => {

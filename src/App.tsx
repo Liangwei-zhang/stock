@@ -13,6 +13,7 @@ import { AnalysisGrid }       from './components/AnalysisGrid';
 import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
+import { ErrorBoundary }      from './components/ErrorBoundary';
 import { Alert, WatchlistItem } from './types';
 import './App.css';
 
@@ -72,7 +73,7 @@ const App: React.FC = () => {
   const selectedItem = watchlistItems.find(w => w.symbol === selectedStock);
 
   const fmtPrice = (p: number) =>
-    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
+    p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(4) : p >= 0.001 ? p.toFixed(6) : p.toFixed(8);
 
   const handleRemoveWithSelect = async (symbol: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -135,6 +136,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   {/* ── K 线图 ── */}
+                  <ErrorBoundary zone="圖表區" autoRetry={true}>
                   <div className="chart-wrapper">
                     <div className="chart-toolbar">
                       <div className="chart-title-group">
@@ -169,24 +171,29 @@ const App: React.FC = () => {
                     </div>
                     <div className="chart-container" ref={setChartContainer}/>
                   </div>
+                  </ErrorBoundary>
 
                   {/* ── 分析卡片 ── */}
+                  <ErrorBoundary zone="分析區" autoRetry={true}>
                   <AnalysisGrid
                     analysis={analysis}
                     selectedStock={selectedStock}
                     onRefresh={updateUI}
                   />
+                  </ErrorBoundary>
                 </>
               )}
             </div>
 
             {/* ── 交易面板 ── */}
+            <ErrorBoundary zone="交易區" autoRetry={false}>
             <TradingSection
               stocks={stocks}
               watchlistItems={watchlistItems}
               refreshKey={refreshKey}
               onRefresh={updateUI}
             />
+            </ErrorBoundary>
           </div>
         </div>
 

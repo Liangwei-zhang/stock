@@ -73,14 +73,18 @@ class AutoTradeService {
     try {
       const raw = localStorage.getItem(LS_CONFIG_KEY);
       if (raw) return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-    } catch {}
+    } catch (err) {
+      console.warn('[AutoTradeService] loadConfig failed, using defaults:', err);
+    }
     return { ...DEFAULT_CONFIG };
   }
 
   private saveConfig(): void {
     try {
       localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(this.config));
-    } catch {}
+    } catch (err) {
+      console.warn('[AutoTradeService] saveConfig failed:', err);
+    }
   }
 
   // ── 公开：配置修改 ────────────────────────────────────────────────────────

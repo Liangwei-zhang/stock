@@ -70,7 +70,9 @@ function saveState(account: Account): void {
       trades:         account.trades,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+  } catch (err) {
+    console.warn('[TradingSimulator] saveState failed (storage may be full):', err);
+  }
 }
 
 function loadState(): PersistedState | null {
@@ -86,6 +88,7 @@ const POSITION_RATIO  = 0.1;
 const ATR_STOP_MULT   = 2.0;
 const ATR_PROFIT_MULT = 3.0;
 const DEFAULT_ATR_PCT = 0.015;
+const MAX_TRADES      = 1000;  // 交易歷史上限，防止無限增長
 
 class TradingSimulator {
   private account: Account = {
@@ -147,7 +150,9 @@ class TradingSimulator {
       this.recalcTotals();
       this.persist();
       this.notify();
-    } catch {}
+    } catch (err) {
+      console.warn('[TradingSimulator] syncFromAPI failed, using local state:', err);
+    }
   }
 
   private recalcTotals(prices?: Map<string, number>): void {
@@ -218,6 +223,7 @@ class TradingSimulator {
         });
       }
       this.account.trades.unshift({ id: ++this.tradeCounter, symbol, side: 'buy', quantity, price, total, fee, date: Date.now(), exitReason });
+      if (this.account.trades.length > MAX_TRADES) this.account.trades.length = MAX_TRADES;
     } else {
       const pos = this.account.positions.get(symbol);
       if (!pos) return { success: false, message: `無 ${symbol} 持倉，無法賣出` };
@@ -230,6 +236,7 @@ class TradingSimulator {
 
       this.account.balance += sellTotal - sellFee;
       this.account.trades.unshift({ id: ++this.tradeCounter, symbol, side: 'sell', quantity: sellQty, price, total: sellTotal, fee: sellFee, date: Date.now(), pnl, pnlPercent, exitReason });
+      if (this.account.trades.length > MAX_TRADES) this.account.trades.length = MAX_TRADES;
 
       if (sellQty >= pos.quantity) this.account.positions.delete(symbol);
       else pos.quantity -= sellQty;

@@ -128,9 +128,11 @@ class StockService {
       this.meta.set(item.symbol, { source: 'simulated', lastUpdated: 0 });
     }
 
-    // 1. 从 marketDB 加载 → 2. 触发真实历史后台拉取
+    // 1. 从 marketDB 加载 → 2. 触发真实历史后台拉取（捕获顶层错误）
     for (const item of stored) await this._loadFromDB(item);
-    this._refreshAllHistories();
+    this._refreshAllHistories().catch(err =>
+      console.warn('[StockService] _refreshAllHistories failed:', err)
+    );
 
     setTimeout(() => pruneOldHistory(), 5000);
   }
@@ -164,15 +166,30 @@ class StockService {
     }
   }
 
-  private async _fetchRealHistory(item: WatchlistItem): Promise<void> {
+  private _fetchErrorCounts = new Map<string, number>();
+
+  private async _fetchRealHistoryWithRetry(item: WatchlistItem, attempt = 0): Promise<void> {
     try {
       const hist = await dataSourceRegistry.fetchHistory(item.symbol, item.assetType);
       if (!hist.length) return;
       this.data.set(item.symbol, hist.slice(-120));
       this.meta.set(item.symbol, { source: 'real', lastUpdated: Date.now() });
-      // 异步写双层 DB
+      this._fetchErrorCounts.delete(item.symbol); // 成功後重置錯誤計數
       marketDB.saveOHLCV(toOHLCV(hist, item.assetType)).catch(() => {});
-    } catch { /* 静默失败，保持现有数据 */ }
+    } catch (err) {
+      const count = (this._fetchErrorCounts.get(item.symbol) ?? 0) + 1;
+      this._fetchErrorCounts.set(item.symbol, count);
+      console.warn(`[StockService] fetchRealHistory(${item.symbol}) attempt ${attempt + 1} failed (total: ${count}):`, err);
+      // 指數退避重試（最多 3 次，間隔 2^attempt * 1s）
+      if (attempt < 2) {
+        const delay = Math.pow(2, attempt) * 1000;
+        setTimeout(() => this._fetchRealHistoryWithRetry(item, attempt + 1), delay);
+      }
+    }
+  }
+
+  private async _fetchRealHistory(item: WatchlistItem): Promise<void> {
+    return this._fetchRealHistoryWithRetry(item, 0);
   }
 
   // ── 公开：更新报价（每 20s）─────────────────────────────────────────────────

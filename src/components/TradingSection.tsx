@@ -12,7 +12,7 @@ const { Text } = Typography;
 type TabKey = 'autotrade' | 'positions' | 'history' | 'performance' | 'bots';
 
 const fmtPrice = (p: number) =>
-  p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
+  p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(4) : p >= 0.001 ? p.toFixed(6) : p.toFixed(8);
 const fmtPnl = (n: number) => `${n >= 0 ? '+' : ''}$${Math.abs(n).toFixed(2)}`;
 const fmtTime = (ts: number) =>
   new Date(ts).toLocaleString('en-US', {
