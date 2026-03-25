@@ -14,21 +14,18 @@ import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
 import { Alert, WatchlistItem } from './types';
-import { useTranslation } from 'react-i18next';
 import './App.css';
 
 const { Content } = Layout;
 const { Text }    = Typography;
 
-const SOURCE_DOT = {
-  real:      '🟢',
-  database:  '🟡',
-  simulated: '⚪',
+const SOURCE_CONFIG = {
+  real:      { label: '实时', dot: '🟢' },
+  database:  { label: '缓存', dot: '🟡' },
+  simulated: { label: '模拟', dot: '⚪' },
 } as const;
 
 const App: React.FC = () => {
-  const { t } = useTranslation();
-
   // ── 全局 UI 状态 ────────────────────────────────────────────────────────────
   const [selectedStock,  setSelectedStock]  = useState('');
   const [alertVisible,   setAlertVisible]   = useState(false);
@@ -91,7 +88,7 @@ const App: React.FC = () => {
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
           <div style={{ textAlign: 'center' }}>
             <Spin size="large"/>
-            <div style={{ color: '#8b949e', marginTop: 16, fontSize: 14 }}>{t('common.loading')}</div>
+            <div style={{ color: '#8b949e', marginTop: 16, fontSize: 14 }}>正在加载数据…</div>
           </div>
         </div>
       </ConfigProvider>
@@ -132,8 +129,8 @@ const App: React.FC = () => {
               {!selectedStock || !analysis ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📊</div>
-                  <Text style={{ color: '#8b949e' }}>{t('common.selectOrAdd')}</Text>
-                  <Button type="primary" icon={<PlusOutlined/>} onClick={() => setSearchVisible(true)}>{t('common.addAsset')}</Button>
+                  <Text style={{ color: '#8b949e' }}>从左侧选择或添加资产以查看分析</Text>
+                  <Button type="primary" icon={<PlusOutlined/>} onClick={() => setSearchVisible(true)}>添加资产</Button>
                 </div>
               ) : (
                 <>
@@ -156,7 +153,7 @@ const App: React.FC = () => {
                           {selectedItem && <Tag color={assetTypeColor(selectedItem.assetType)} style={{ margin: 0 }}>{assetTypeLabel(selectedItem.assetType)}</Tag>}
                           {selectedMeta && (
                             <Tag color={selectedMeta.source === 'real' ? 'success' : selectedMeta.source === 'database' ? 'warning' : 'default'} style={{ margin: 0 }}>
-                              {SOURCE_DOT[selectedMeta.source]} {t(`dataSource.${selectedMeta.source}`)}
+                              {SOURCE_CONFIG[selectedMeta.source].dot} {SOURCE_CONFIG[selectedMeta.source].label}
                             </Tag>
                           )}
                         </div>

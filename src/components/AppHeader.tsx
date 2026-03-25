@@ -1,7 +1,6 @@
 import React from 'react';
 import { Layout, Typography, Tooltip, Button, Badge, Space } from 'antd';
 import { BellOutlined, PlusOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { autoTradeService } from '../services/autoTradeService';
 import { PluginSelector }   from './PluginSelector';
 import { DataSourceConfig } from './DataSourceConfig';
@@ -25,7 +24,6 @@ export const AppHeader: React.FC<Props> = ({
   currentTime, stocks, unreadCount, selectedStock,
   onAddClick, onAlertClick, onRefresh,
 }) => {
-  const { t, i18n } = useTranslation();
   const atCfg    = autoTradeService.getConfig();
   const atActive = atCfg.enabled && Object.values(atCfg.symbolsEnabled).some(Boolean);
   const atCount  = Object.values(atCfg.symbolsEnabled).filter(Boolean).length;
@@ -40,7 +38,7 @@ export const AppHeader: React.FC<Props> = ({
           <circle cx="12" cy="14" r="2" fill="white"/>
           <circle cx="20" cy="10" r="2" fill="white"/>
         </svg>
-        <Title level={5} className="header-title">{t('app.title')}</Title>
+        <Title level={5} className="header-title">股票智能预警</Title>
       </div>
 
       <div className="header-center">
@@ -52,7 +50,7 @@ export const AppHeader: React.FC<Props> = ({
             hour12: false,
           })}
         </Text>
-        <Tooltip title={isLive ? t('app.liveConnected') : t('app.simDataInUse')}>
+        <Tooltip title={isLive ? '已连接实时行情' : '使用模拟数据'}>
           <span style={{ fontSize: 12, color: isLive ? '#3fb950' : '#d29922' }}>
             {isLive ? <WifiOutlined/> : <DisconnectOutlined/>}
           </span>
@@ -70,7 +68,7 @@ export const AppHeader: React.FC<Props> = ({
         <ExportButton symbol={selectedStock} disabled={!selectedStock}/>
 
         {/* 自动交易开关 */}
-        <Tooltip title={atActive ? t('trading.autoTradeActive', { count: atCount }) : t('trading.autoTradePaused')}>
+        <Tooltip title={atActive ? `自动交易：${atCount} 个标的监控中` : '自动交易已暂停'}>
           <div
             onClick={() => { autoTradeService.setEnabled(!atCfg.enabled); onRefresh(); }}
             style={{
@@ -82,22 +80,14 @@ export const AppHeader: React.FC<Props> = ({
           >
             <span style={{ fontSize: 12, color: atActive ? '#3fb950' : '#484f58' }}>⚡</span>
             <Text style={{ fontSize: 11, color: atActive ? '#3fb950' : '#484f58' }}>
-              {atActive ? t('trading.autoTradeCount', { count: atCount }) : t('trading.autoTrade')}
+              {atActive ? `自动 ${atCount}` : '自动'}
             </Text>
           </div>
         </Tooltip>
 
-        <Tooltip title={t('app.searchAndAdd')}>
-          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>{t('common.addAsset')}</Button>
+        <Tooltip title="搜索并添加资产">
+          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>添加</Button>
         </Tooltip>
-
-        <Button
-          size="small"
-          onClick={() => i18n.changeLanguage(i18n.language === 'zh-TW' ? 'en' : 'zh-TW')}
-          style={{ fontSize: 11, minWidth: 36 }}
-        >
-          {i18n.language === 'zh-TW' ? 'EN' : '中'}
-        </Button>
 
         <Badge count={unreadCount} size="small" offset={[-2, 2]}>
           <Button type="text" icon={<BellOutlined style={{ fontSize: 18 }}/>}

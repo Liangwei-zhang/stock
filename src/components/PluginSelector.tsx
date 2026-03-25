@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Select, Button, Slider, Switch, Tooltip, Tag, Divider, Space, Typography } from 'antd';
 import { ExperimentOutlined, SettingOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { pluginRegistry } from '../core/plugin-registry';
 import type { PluginRegistrySnapshot, PluginConfigSchema } from '../core/types';
 
@@ -13,7 +12,6 @@ interface Props {
 }
 
 export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => {
-  const { t } = useTranslation();
   const [open,     setOpen]     = useState(false);
   const [snap,     setSnap]     = useState<PluginRegistrySnapshot>(pluginRegistry.snapshot());
   const [cfgDraft, setCfgDraft] = useState<Record<string, unknown>>({});
@@ -53,14 +51,14 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
 
   return (
     <>
-      <Tooltip title={t('plugin.pluginTooltip', { name: snap.plugins.find(p => p.id === snap.active)?.name ?? t('plugin.unknown') })}>
+      <Tooltip title={`算法插件：${snap.plugins.find(p => p.id === snap.active)?.name ?? '未知'}`}>
         <Button
           size="small"
           icon={<ExperimentOutlined/>}
           onClick={handleOpen}
           style={{ fontSize: 11 }}
         >
-          {snap.plugins.find(p => p.id === snap.active)?.name ?? t('plugin.algorithm')}
+          {snap.plugins.find(p => p.id === snap.active)?.name ?? '算法'}
         </Button>
       </Tooltip>
 
@@ -68,18 +66,18 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
         open={open}
         onCancel={() => setOpen(false)}
         onOk={handleSaveConfig}
-        okText={t('plugin.apply')}
-        cancelText={t('plugin.cancel')}
+        okText="应用"
+        cancelText="取消"
         title={
           <Space>
             <ExperimentOutlined/>
-            <span>{t('plugin.manager')}</span>
+            <span>算法插件管理</span>
           </Space>
         }
         width={520}
       >
         {/* 插件列表 */}
-        <Title level={5} style={{ marginBottom: 12 }}>{t('plugin.available')}</Title>
+        <Title level={5} style={{ marginBottom: 12 }}>可用插件</Title>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {snap.plugins.map(p => (
             <div
@@ -117,7 +115,7 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
             <Divider style={{ margin: '0 0 16px' }}/>
             <Title level={5} style={{ marginBottom: 12 }}>
               <SettingOutlined style={{ marginRight: 6 }}/>
-              {t('plugin.paramAdjust', { name: activePlugin?.name })}
+              参数调整（{activePlugin?.name}）
             </Title>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
               {schema.map(s => (

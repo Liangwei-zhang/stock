@@ -1,6 +1,5 @@
 import React from 'react';
 import { Typography, Tag, Switch } from 'antd';
-import { useTranslation } from 'react-i18next';
 import { autoTradeService } from '../services/autoTradeService';
 import { StockAnalysis } from '../types';
 
@@ -13,7 +12,6 @@ interface Props {
 }
 
 export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefresh }) => {
-  const { t } = useTranslation();
   const atCfg = autoTradeService.getConfig();
   const ind    = analysis.indicators;
 
@@ -22,7 +20,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
 
       {/* ── Card 1: Technical Indicators ───────────────────────────────── */}
       <div className="analysis-card">
-        <div className="analysis-card-title">{t('analysis.technicalIndicators')}</div>
+        <div className="analysis-card-title">技术指标</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
           {[
             ['EMA9',  ind.ema9.toFixed(2),   ind.ema9 > ind.ema21 ? 'pos' : 'neg'],
@@ -39,12 +37,12 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
           ))}
           <div className="ind-separator" style={{ gridColumn: '1/-1' }}/>
           {[
-            ['MACD',          ind.macdDif.toFixed(4),               ind.macdDif > 0 ? 'pos' : 'neg'],
-            ['Hist',          ind.macdHistogram.toFixed(4),          ind.macdHistogram > 0 ? 'pos' : 'neg'],
-            ['POC',           `$${ind.poc.toFixed(2)}`,             ''],
-            [t('analysis.bbWidth'),  (ind.bollWidth * 100).toFixed(2) + '%', ind.bollSqueezing ? 'warn' : ''],
-            [t('analysis.bullDiv'),  ind.rsiBullDiv ? '✓' : '—',           ind.rsiBullDiv ? 'pos' : ''],
-            [t('analysis.bearDiv'),  ind.rsiBearDiv ? '✓' : '—',           ind.rsiBearDiv ? 'neg' : ''],
+            ['MACD',  ind.macdDif.toFixed(4),               ind.macdDif > 0 ? 'pos' : 'neg'],
+            ['Hist',  ind.macdHistogram.toFixed(4),          ind.macdHistogram > 0 ? 'pos' : 'neg'],
+            ['POC',   `$${ind.poc.toFixed(2)}`,             ''],
+            ['BB宽',  (ind.bollWidth * 100).toFixed(2) + '%', ind.bollSqueezing ? 'warn' : ''],
+            ['底背离', ind.rsiBullDiv ? '✓' : '—',           ind.rsiBullDiv ? 'pos' : ''],
+            ['顶背离', ind.rsiBearDiv ? '✓' : '—',           ind.rsiBearDiv ? 'neg' : ''],
           ].map(([l, v, c]) => (
             <div key={l} className="ind-row">
               <span className="ind-label">{l}</span>
@@ -56,11 +54,11 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
 
       {/* ── Card 2: Buy / Sell Signals ──────────────────────────────────── */}
       <div className="analysis-card">
-        <div className="analysis-card-title">{t('analysis.buySellSignals')}</div>
+        <div className="analysis-card-title">买卖信号</div>
         <div className="signal-scorecard">
           {/* Buy */}
           <div className={`score-box ${analysis.buySignal.signal ? 'buy' : 'none'}`}>
-            <div className={`score-label ${analysis.buySignal.signal ? 'buy' : ''}`}>{t('analysis.buy')}</div>
+            <div className={`score-label ${analysis.buySignal.signal ? 'buy' : ''}`}>买入</div>
             <div className={`score-number ${analysis.buySignal.signal ? 'buy' : 'none'}`}>
               {analysis.buySignal.signal ? analysis.buySignal.score : '—'}
             </div>
@@ -68,7 +66,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
               <>
                 <Tag color={analysis.buySignal.level === 'high' ? 'green' : 'lime'}
                   style={{ margin: '4px 0 0', fontSize: 10 }}>
-                  {analysis.buySignal.level === 'high' ? t('analysis.highLevel') : t('analysis.mediumLevel')}
+                  {analysis.buySignal.level === 'high' ? '高级' : '中级'}
                 </Tag>
                 <div className="score-reasons">
                   {analysis.buySignal.reasons.slice(0, 3).map((r, i) =>
@@ -80,7 +78,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
           </div>
           {/* Sell */}
           <div className={`score-box ${analysis.sellSignal.signal ? 'sell' : 'none'}`}>
-            <div className={`score-label ${analysis.sellSignal.signal ? 'sell' : ''}`}>{t('analysis.sell')}</div>
+            <div className={`score-label ${analysis.sellSignal.signal ? 'sell' : ''}`}>卖出</div>
             <div className={`score-number ${analysis.sellSignal.signal ? 'sell' : 'none'}`}>
               {analysis.sellSignal.signal ? analysis.sellSignal.score : '—'}
             </div>
@@ -88,7 +86,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
               <>
                 <Tag color={analysis.sellSignal.level === 'high' ? 'red' : 'volcano'}
                   style={{ margin: '4px 0 0', fontSize: 10 }}>
-                  {analysis.sellSignal.level === 'high' ? t('analysis.highLevel') : t('analysis.mediumLevel')}
+                  {analysis.sellSignal.level === 'high' ? '高级' : '中级'}
                 </Tag>
                 <div className="score-reasons">
                   {analysis.sellSignal.reasons.slice(0, 3).map((r, i) =>
@@ -111,8 +109,8 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
             color: atCfg.enabled && (atCfg.symbolsEnabled[selectedStock] ?? false) ? '#3fb950' : '#484f58',
           }}>
             {atCfg.enabled && (atCfg.symbolsEnabled[selectedStock] ?? false)
-              ? t('analysis.autoTradeActive')
-              : t('analysis.autoTradeInactive')}
+              ? '⚡ 自动交易监控中'
+              : '⏸ 自动交易未开启'}
           </Text>
           <Switch
             size="small"
@@ -124,13 +122,13 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
 
       {/* ── Card 3: Top / Bottom Prediction ─────────────────────────────── */}
       <div className="analysis-card">
-        <div className="analysis-card-title">{t('analysis.predictionTitle')}</div>
+        <div className="analysis-card-title">顶底预测</div>
         <div className={`pred-type-badge ${analysis.prediction.type}`}>
           {analysis.prediction.type === 'top'
-            ? t('analysis.potentialTop')
+            ? '⬆ 潜在顶部'
             : analysis.prediction.type === 'bottom'
-              ? t('analysis.potentialBottom')
-              : t('analysis.noSignal')}
+              ? '⬇ 潜在底部'
+              : '◎ 无明显信号'}
         </div>
         {analysis.prediction.type !== 'neutral' && (
           <div className="pred-prob">
