@@ -198,16 +198,19 @@ describe('serverBridge — getAlertsFromServer', () => {
 
 // ─── export service ───────────────────────────────────────────────────────────
 
-describe('report-service — formatStats', () => {
-  it('formatStats returns a non-empty string', async () => {
+describe('report-exporter — exportReport exists', () => {
+  it('report-exporter module exports exportReport function', async () => {
     vi.resetModules();
     vi.stubGlobal('localStorage', makeLsMock());
-    const mod = await import('../export/report-service').catch(() => null);
-    if (!mod) return; // Skip if export service doesn't export formatStats
-    if (typeof (mod as any).formatStats === 'function') {
-      const result = (mod as any).formatStats({ winRate: 0.6, totalPnL: 1000, trades: 10 });
-      expect(typeof result).toBe('string');
-    }
+    const mod = await import('../export/report-exporter');
+    expect(typeof mod.exportReport).toBe('function');
+  });
+
+  it('report-service module exports generateAndExport function', async () => {
+    vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    const mod = await import('../export/report-service');
+    expect(typeof mod.generateAndExport).toBe('function');
   });
 });
 

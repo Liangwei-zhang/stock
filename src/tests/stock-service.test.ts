@@ -3,7 +3,7 @@
  * 覆蓋 src/services/stockService.ts 中的 StockService 類
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { WatchlistItem } from '../types';
 
 // ─── Mock 依賴 ────────────────────────────────────────────────────────────────
@@ -60,19 +60,18 @@ function makeWatchlistItem(symbol: string, assetType: WatchlistItem['assetType']
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('StockService — initialization', () => {
-  beforeEach(() => {
-    vi.stubGlobal('localStorage', makeLsMock());
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-  });
-
   it('isInitialized is false before init()', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     expect(stockService.isInitialized()).toBe(false);
   });
 
   it('isInitialized is true after init()', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     expect(stockService.isInitialized()).toBe(true);
@@ -80,6 +79,8 @@ describe('StockService — initialization', () => {
 
   it('getWatchlist returns empty array initially', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     const wl = stockService.getWatchlist();
     expect(Array.isArray(wl)).toBe(true);
@@ -87,13 +88,11 @@ describe('StockService — initialization', () => {
 });
 
 describe('StockService — symbol management', () => {
-  beforeEach(() => {
-    vi.stubGlobal('localStorage', makeLsMock());
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-  });
 
   it('addSymbol adds to watchlist', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('AAPL'));
@@ -102,6 +101,8 @@ describe('StockService — symbol management', () => {
 
   it('removeSymbol removes from watchlist', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('MSFT'));
@@ -111,6 +112,8 @@ describe('StockService — symbol management', () => {
 
   it('duplicate addSymbol does not duplicate watchlist', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('TSLA'));
@@ -121,6 +124,8 @@ describe('StockService — symbol management', () => {
 
   it('getAvailableStocks returns all watched symbols', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('GOOG'));
@@ -132,13 +137,11 @@ describe('StockService — symbol management', () => {
 });
 
 describe('StockService — data access', () => {
-  beforeEach(() => {
-    vi.stubGlobal('localStorage', makeLsMock());
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-  });
 
   it('getStockHistory returns array (possibly simulated)', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('BTC', 'crypto'));
@@ -150,6 +153,8 @@ describe('StockService — data access', () => {
 
   it('getKLineData returns kline format', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('ETH', 'crypto'));
@@ -166,6 +171,8 @@ describe('StockService — data access', () => {
 
   it('getStockHistory returns empty array for unknown symbol', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     const hist = stockService.getStockHistory('UNKNOWN_XYZ');
     expect(hist).toEqual([]);
@@ -173,6 +180,8 @@ describe('StockService — data access', () => {
 
   it('getSymbolMeta returns default meta for unknown symbol', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     const meta = stockService.getSymbolMeta('UNKNOWN_XYZ');
     expect(meta).toHaveProperty('source');
@@ -181,13 +190,11 @@ describe('StockService — data access', () => {
 });
 
 describe('StockService — simulated data generation', () => {
-  beforeEach(() => {
-    vi.stubGlobal('localStorage', makeLsMock());
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-  });
 
   it('simulated data has correct StockData shape', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('GC=F', 'futures'));
@@ -206,6 +213,8 @@ describe('StockService — simulated data generation', () => {
 
   it('simulated prices are positive', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('^GSPC', 'index'));
@@ -218,13 +227,11 @@ describe('StockService — simulated data generation', () => {
 });
 
 describe('StockService — getStocks', () => {
-  beforeEach(() => {
-    vi.stubGlobal('localStorage', makeLsMock());
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-  });
 
   it('getStocks returns latest price for each watched symbol', async () => {
     vi.resetModules();
+    vi.stubGlobal('localStorage', makeLsMock());
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const { stockService } = await import('../services/stockService');
     await stockService.init();
     await stockService.addSymbol(makeWatchlistItem('SPY', 'etf'));

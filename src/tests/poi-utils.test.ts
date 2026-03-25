@@ -238,11 +238,10 @@ describe('POIManager — getActivePOIs and getNearestPOI', () => {
     const { POIManager } = await import('../utils/poi-state');
     const mgr = new POIManager();
     mgr.addPOI('support', 98, 8, 'near support');
-    mgr.addPOI('resistance', 150, 8, 'far resistance');
-    const nearest = mgr.getNearestPOI(100);
-    if (nearest) {
-      expect(nearest.level).toBe(98); // 98 is closer to 100 than 150
-    }
+    mgr.addPOI('support', 80, 8, 'far support');
+    const nearest = mgr.getNearestPOI('support', 100);
+    expect(nearest).not.toBeNull();
+    expect(nearest!.level).toBe(98); // 98 is closer to 100 than 80
   });
 });
 

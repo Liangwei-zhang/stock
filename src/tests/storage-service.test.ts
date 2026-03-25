@@ -101,12 +101,9 @@ function makeStockData(symbol: string, price = 100): StockData {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('StorageService — watchlist operations', () => {
-  beforeEach(() => {
-    vi.stubGlobal('indexedDB', createIDBMock());
-  });
-
   it('getWatchlist returns an array', async () => {
     vi.resetModules();
+    vi.stubGlobal('indexedDB', createIDBMock());
     const { getWatchlist } = await import('../services/storageService');
     const result = await getWatchlist();
     expect(Array.isArray(result)).toBe(true);
