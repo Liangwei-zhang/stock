@@ -7,6 +7,8 @@
  *  - 交易記錄持久化（localStorage fallback）
  */
 
+import { safeGetItem, safeSetItem } from '../utils/storage';
+
 const API_BASE = 'http://localhost:3002/api';
 const LS_KEY   = 'trading_simulator_v2';
 
@@ -62,23 +64,17 @@ interface PersistedState {
 }
 
 function saveState(account: Account): void {
-  try {
-    const state: PersistedState = {
-      balance:        account.balance,
-      initialBalance: account.initialBalance,
-      positions:      Array.from(account.positions.entries()),
-      trades:         account.trades,
-    };
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+  const state: PersistedState = {
+    balance:        account.balance,
+    initialBalance: account.initialBalance,
+    positions:      Array.from(account.positions.entries()),
+    trades:         account.trades,
+  };
+  safeSetItem(LS_KEY, state);
 }
 
 function loadState(): PersistedState | null {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PersistedState;
-  } catch { return null; }
+  return safeGetItem<PersistedState | null>(LS_KEY, null);
 }
 
 const FEE_RATE        = 0.001;
@@ -289,3 +285,11 @@ class TradingSimulator {
 }
 
 export const tradingSimulator = new TradingSimulator();
+
+// ─── HMR 保護：防止 Vite 熱更新時產生多個服務實例 ────────────────────────────
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  import.meta.hot.dispose(() => {
+    tradingSimulator.setOnUpdate(() => {});
+  });
+}

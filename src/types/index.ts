@@ -132,3 +132,42 @@ export interface SymbolMeta {
   source:      DataSource;
   lastUpdated: number;
 }
+
+// ─── P1-3 補充類型定義 ────────────────────────────────────────────────────────
+
+/** API 響應的原始 K 線數據 */
+export interface RawCandleResponse {
+  symbol:    string;
+  timestamp: number;
+  open:      number;
+  high:      number;
+  low:       number;
+  close:     number;
+  volume:    number;
+}
+
+/** 數據源配置（UI 展示用） */
+export interface DataSourceConfig {
+  type:  DataSource;
+  label: string;
+  dot:   string;
+}
+
+/** 交易執行結果 */
+export interface TradeResult {
+  success: boolean;
+  message: string;
+  trade?: {
+    id:          number;
+    symbol:      string;
+    side:        'buy' | 'sell';
+    quantity:    number;
+    price:       number;
+    total:       number;
+    fee:         number;
+    date:        number;
+    pnl?:        number;
+    pnlPercent?: number;
+    exitReason?: string;
+  };
+}

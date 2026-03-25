@@ -8,6 +8,7 @@
 
 import { StockAnalysis } from '../types';
 import { calcTradeStats, TradeStats } from './backtestStats';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../utils/storage';
 
 // ─── 规则集 ───────────────────────────────────────────────────────────────────
 
@@ -229,16 +230,14 @@ interface PersistedUserState {
 }
 
 function persist(state: SimUserState): void {
-  try {
-    const s: PersistedUserState = {
-      balance:        state.balance,
-      initBalance:    state.initBalance,
-      allowedSymbols: state.allowedSymbols,
-      positions:      Array.from(state.positions.entries()),
-      trades:         state.trades,
-    };
-    localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
-  } catch {}
+  const s: PersistedUserState = {
+    balance:        state.balance,
+    initBalance:    state.initBalance,
+    allowedSymbols: state.allowedSymbols,
+    positions:      Array.from(state.positions.entries()),
+    trades:         state.trades,
+  };
+  safeSetItem(LS_KEY_PREFIX + state.user.id, s);
 }
 
 function restore(user: SimulatedUser, initBalance: number): SimUserState {
@@ -248,19 +247,16 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
     positions: new Map(), trades: [], log: [],
     tradeStats: null, paused: false,
   };
-  try {
-    const raw = localStorage.getItem(LS_KEY_PREFIX + user.id);
-    if (!raw) return blank;
-    const s: PersistedUserState = JSON.parse(raw);
-    return {
-      ...blank,
-      balance:        s.balance,
-      initBalance:    s.initBalance ?? initBalance,
-      allowedSymbols: s.allowedSymbols ?? [],
-      positions:      new Map(s.positions),
-      trades:         s.trades,
-    };
-  } catch { return blank; }
+  const s = safeGetItem<PersistedUserState | null>(LS_KEY_PREFIX + user.id, null);
+  if (!s) return blank;
+  return {
+    ...blank,
+    balance:        s.balance,
+    initBalance:    s.initBalance ?? initBalance,
+    allowedSymbols: s.allowedSymbols ?? [],
+    positions:      new Map(s.positions),
+    trades:         s.trades,
+  };
 }
 
 // ─── 决策引擎 ─────────────────────────────────────────────────────────────────
@@ -511,7 +507,7 @@ class SimulatedUserService {
   }
 
   private loadEnabled(): void {
-    this.enabled = localStorage.getItem('sim_users_enabled') === 'true';
+    this.enabled = safeGetItem<string>('sim_users_enabled', 'false') === 'true';
   }
 
   private init(): void {
@@ -567,7 +563,7 @@ class SimulatedUserService {
 
   setEnabled(v: boolean): void {
     this.enabled = v;
-    localStorage.setItem('sim_users_enabled', String(v));
+    safeSetItem('sim_users_enabled', String(v));
     this.onUpdate?.();
   }
 
@@ -576,7 +572,7 @@ class SimulatedUserService {
   resetAll(balance?: number): void {
     if (balance) this.initBalance = balance;
     for (const user of DEFAULT_USERS) {
-      localStorage.removeItem(LS_KEY_PREFIX + user.id);
+      safeRemoveItem(LS_KEY_PREFIX + user.id);
     }
     this.init();
     this.onUpdate?.();
@@ -585,7 +581,7 @@ class SimulatedUserService {
   resetUser(userId: string): void {
     const user = DEFAULT_USERS.find(u => u.id === userId);
     if (!user) return;
-    localStorage.removeItem(LS_KEY_PREFIX + userId);
+    safeRemoveItem(LS_KEY_PREFIX + userId);
     this.states.set(userId, restore(user, this.initBalance));
     this.onUpdate?.();
   }
@@ -630,7 +626,7 @@ class SimulatedUserService {
     const savedSymbols = state?.allowedSymbols ?? [];
     const savedStrategy = state?.user.strategy ?? user.strategy;
     // 清除旧持久化数据
-    localStorage.removeItem(LS_KEY_PREFIX + userId);
+    safeRemoveItem(LS_KEY_PREFIX + userId);
     // 重建 state，保留策略和标的设置
     const fresh = restore(user, balance);
     fresh.user = { ...user, strategy: savedStrategy };
@@ -659,3 +655,11 @@ class SimulatedUserService {
 }
 
 export const simulatedUserService = new SimulatedUserService();
+
+// ─── HMR 保護：防止 Vite 熱更新時產生多個服務實例 ────────────────────────────
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  import.meta.hot.dispose(() => {
+    simulatedUserService.setOnUpdate(() => {});
+  });
+}

@@ -10,6 +10,7 @@
 
 import { StockAnalysis } from '../types';
 import { tradingSimulator, TradeSignal } from './tradingSimulator';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../utils/storage';
 
 // ─── 类型 ─────────────────────────────────────────────────────────────────────
 
@@ -50,8 +51,9 @@ const DEFAULT_CONFIG: AutoTradeConfig = {
   cooldownMs:     5 * 60 * 1000, // 5 分钟冷却
 };
 
-const LS_CONFIG_KEY   = 'auto_trade_config_v2';
-const MAX_EXECUTIONS  = 100;
+const LS_CONFIG_KEY    = 'auto_trade_config_v2';
+const LS_COOLDOWN_KEY  = 'auto_trade_cooldown_v2';
+const MAX_EXECUTIONS   = 100;
 
 // ─── 服务 ─────────────────────────────────────────────────────────────────────
 
@@ -64,23 +66,30 @@ class AutoTradeService {
   private running  = false; // 防止并发执行
 
   constructor() {
-    this.config = this.loadConfig();
+    this.config    = this.loadConfig();
+    this.lastBuyTs = this.loadCooldowns();
   }
 
   // ── 配置持久化 ────────────────────────────────────────────────────────────
 
   private loadConfig(): AutoTradeConfig {
-    try {
-      const raw = localStorage.getItem(LS_CONFIG_KEY);
-      if (raw) return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-    } catch {}
-    return { ...DEFAULT_CONFIG };
+    const saved = safeGetItem<Partial<AutoTradeConfig>>(LS_CONFIG_KEY, {});
+    return { ...DEFAULT_CONFIG, ...saved };
   }
 
   private saveConfig(): void {
-    try {
-      localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(this.config));
-    } catch {}
+    safeSetItem(LS_CONFIG_KEY, this.config);
+  }
+
+  // ── 冷卻計時器持久化 ──────────────────────────────────────────────────────
+
+  private loadCooldowns(): Map<string, number> {
+    const saved = safeGetItem<Record<string, number>>(LS_COOLDOWN_KEY, {});
+    return new Map(Object.entries(saved));
+  }
+
+  private saveCooldowns(): void {
+    safeSetItem(LS_COOLDOWN_KEY, Object.fromEntries(this.lastBuyTs));
   }
 
   // ── 公开：配置修改 ────────────────────────────────────────────────────────
@@ -221,6 +230,7 @@ class AutoTradeService {
           );
           if (result === 'success') {
             this.lastBuyTs.set(symbol, Date.now());
+            this.saveCooldowns();
           }
         } else {
           this.record({
@@ -276,6 +286,7 @@ class AutoTradeService {
   clearExecutions(): void {
     this.executions = [];
     this.lastBuyTs.clear(); // 同时重置冷却计时器
+    safeRemoveItem(LS_COOLDOWN_KEY); // 同步清除持久化记录
     this.notify();
   }
 
@@ -284,3 +295,11 @@ class AutoTradeService {
 }
 
 export const autoTradeService = new AutoTradeService();
+
+// ─── HMR 保護：防止 Vite 熱更新時產生多個服務實例 ────────────────────────────
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  import.meta.hot.dispose(() => {
+    autoTradeService.setOnChange(() => {});
+  });
+}

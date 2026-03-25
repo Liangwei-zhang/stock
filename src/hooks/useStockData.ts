@@ -91,12 +91,17 @@ export function useStockData() {
 
   // ─── 初始化 ────────────────────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+
     stockService.init().then(() => {
+      if (cancelled) return;
       const wl = stockService.getWatchlist();
       setWatchlistItems(wl);
       setInitialized(true);
       updateUI();
     });
+
+    return () => { cancelled = true; };
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── 轮询（初始化后启动）──────────────────────────────────────────────────

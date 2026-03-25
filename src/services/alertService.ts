@@ -126,3 +126,11 @@ class AlertService {
 }
 
 export const alertService = new AlertService();
+
+// ─── HMR 保護：防止 Vite 熱更新時產生多個服務實例 ────────────────────────────
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  import.meta.hot.dispose(() => {
+    alertService.setOnChange(() => {});
+  });
+}

@@ -288,3 +288,8 @@ class StockService {
 }
 
 export const stockService = new StockService();
+
+// ─── HMR 保護：防止 Vite 熱更新時產生多個服務實例 ────────────────────────────
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}

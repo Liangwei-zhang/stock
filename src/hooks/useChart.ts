@@ -10,7 +10,7 @@
  *  <div ref={setChartContainer} />
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { stockService } from '../services/stockService';
 
@@ -21,11 +21,13 @@ interface UseChartOptions {
 
 export function useChart({ selectedStock, refreshKey }: UseChartOptions) {
   const [chartContainer, setChartContainer] = useState<HTMLDivElement | null>(null);
-  const [chart,          setChart]          = useState<IChartApi | null>(null);
-  const [candleSeries,   setCandleSeries]   = useState<ISeriesApi<'Candlestick'> | null>(null);
-  const [ma5S,           setMa5S]           = useState<ISeriesApi<'Line'> | null>(null);
-  const [ma10S,          setMa10S]          = useState<ISeriesApi<'Line'> | null>(null);
-  const [ma20S,          setMa20S]          = useState<ISeriesApi<'Line'> | null>(null);
+
+  // useRef 存儲 chart 實例引用，避免 closure 陳舊引用問題
+  const chartRef        = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const ma5SRef         = useRef<ISeriesApi<'Line'> | null>(null);
+  const ma10SRef        = useRef<ISeriesApi<'Line'> | null>(null);
+  const ma20SRef        = useRef<ISeriesApi<'Line'> | null>(null);
 
   // ─── 图表初始化（依赖容器 div）────────────────────────────────────────────
   useEffect(() => {
@@ -43,11 +45,11 @@ export function useChart({ selectedStock, refreshKey }: UseChartOptions) {
     const m10 = nc.addLineSeries({ color: '#faad14', lineWidth: 1, title: 'MA10' });
     const m20 = nc.addLineSeries({ color: '#722ed1', lineWidth: 1, title: 'MA20' });
 
-    setChart(nc);
-    setCandleSeries(cs);
-    setMa5S(m5);
-    setMa10S(m10);
-    setMa20S(m20);
+    chartRef.current        = nc;
+    candleSeriesRef.current = cs;
+    ma5SRef.current         = m5;
+    ma10SRef.current        = m10;
+    ma20SRef.current        = m20;
 
     const onResize = () => nc.applyOptions({ width: chartContainer.clientWidth, height: 400 });
     window.addEventListener('resize', onResize);
@@ -55,12 +57,21 @@ export function useChart({ selectedStock, refreshKey }: UseChartOptions) {
 
     return () => {
       window.removeEventListener('resize', onResize);
-      nc.remove();
+      // 確保 chart 實例被正確銷毀，清空 DOM 避免孤立節點
+      try { nc.remove(); } catch { /* 已銷毀則忽略 */ }
+      chartContainer.innerHTML = '';
+      chartRef.current        = null;
+      candleSeriesRef.current = null;
+      ma5SRef.current         = null;
+      ma10SRef.current        = null;
+      ma20SRef.current        = null;
     };
   }, [chartContainer]);
 
   // ─── K 线数据更新 ────────────────────────────────────────────────────────
   useEffect(() => {
+    const chart        = chartRef.current;
+    const candleSeries = candleSeriesRef.current;
     if (!chart || !candleSeries || !selectedStock) return;
 
     const kd = stockService.getKLineData(selectedStock);
@@ -85,11 +96,12 @@ export function useChart({ selectedStock, refreshKey }: UseChartOptions) {
       if (i >= 19) m20d.push({ time: t, value: cls.slice(i - 19, i + 1).reduce((a, b) => a + b) / 20 });
     }
 
-    ma5S?.setData(m5d);
-    ma10S?.setData(m10d);
-    ma20S?.setData(m20d);
+    ma5SRef.current?.setData(m5d);
+    ma10SRef.current?.setData(m10d);
+    ma20SRef.current?.setData(m20d);
     chart.timeScale().fitContent();
-  }, [selectedStock, refreshKey, chart, candleSeries, ma5S, ma10S, ma20S]);
+  // chartContainer 加入依賴：確保容器更換後（chart 重建時）K 線數據也重新注入
+  }, [selectedStock, refreshKey, chartContainer]);
 
   return { setChartContainer };
 }
