@@ -226,6 +226,9 @@ interface PersistedUserState {
   allowedSymbols: string[];
   positions:      Array<[string, SimPosition]>;
   trades:         SimTrade[];
+  log:            DecisionLog[];   // 决策日志（刷新后保留）
+  paused:         boolean;         // 暂停状态
+  strategy:       UserStrategy;    // 自定义策略（覆盖预设值）
 }
 
 function persist(state: SimUserState): void {
@@ -236,6 +239,9 @@ function persist(state: SimUserState): void {
       allowedSymbols: state.allowedSymbols,
       positions:      Array.from(state.positions.entries()),
       trades:         state.trades,
+      log:            state.log,
+      paused:         state.paused,
+      strategy:       state.user.strategy,
     };
     localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
   } catch {}
@@ -252,13 +258,20 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
     const raw = localStorage.getItem(LS_KEY_PREFIX + user.id);
     if (!raw) return blank;
     const s: PersistedUserState = JSON.parse(raw);
+    // Restore custom strategy if persisted; otherwise keep the default
+    const restoredUser = s.strategy
+      ? { ...user, strategy: s.strategy }
+      : user;
     return {
       ...blank,
+      user:           restoredUser,
       balance:        s.balance,
       initBalance:    s.initBalance ?? initBalance,
       allowedSymbols: s.allowedSymbols ?? [],
       positions:      new Map(s.positions),
       trades:         s.trades,
+      log:            s.log ?? [],
+      paused:         s.paused ?? false,
     };
   } catch { return blank; }
 }
@@ -504,6 +517,8 @@ class SimulatedUserService {
   private onUpdate: (() => void) | null = null;
   private enabled = false;
   private initBalance = 50_000;
+  private lastBatchPersist = 0;
+  private readonly BATCH_PERSIST_INTERVAL = 5_000; // ms — throttle non-trade persists
 
   constructor() {
     this.loadEnabled();
@@ -544,6 +559,17 @@ class SimulatedUserService {
         }
       }
     }
+
+    // Batch persist with throttle — covers hold/skip/paused log changes
+    // Trade open/close paths persist immediately inside decide()/closeTrade()
+    const now = Date.now();
+    if (now - this.lastBatchPersist >= this.BATCH_PERSIST_INTERVAL) {
+      for (const state of this.states.values()) {
+        persist(state);
+      }
+      this.lastBatchPersist = now;
+    }
+
     this.onUpdate?.();
   }
 
@@ -596,6 +622,7 @@ class SimulatedUserService {
     const state = this.states.get(userId);
     if (!state) return;
     state.user = { ...state.user, strategy: { ...state.user.strategy, ...patch } };
+    persist(state);
     this.onUpdate?.();
   }
 

@@ -200,6 +200,45 @@ app.get('/api/yahoo/:symbol', async (req, res) => {
   }
 });
 
+// ─── Telegram 中继（服务端发送，避免前端 CORS + Token 暴露）─────────────────
+// 配置：在 .env 中设置 TELEGRAM_BOT_TOKEN 和 TELEGRAM_CHAT_ID（不带 VITE_ 前缀）
+
+app.post('/api/telegram', async (req, res) => {
+  const token  = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!token || !chatId) {
+    return res.json({ success: false, reason: 'not_configured' });
+  }
+
+  const { message } = req.body;
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'message is required' });
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const response = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id:    chatId,
+        text:       message,
+        parse_mode: 'Markdown',
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Telegram API error:', errText);
+      return res.status(502).json({ success: false, error: errText });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Telegram send failed:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── 健康检查 ─────────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {

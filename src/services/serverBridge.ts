@@ -32,3 +32,19 @@ export async function getAlertsFromServer(): Promise<unknown[]> {
     return [];
   }
 }
+
+/**
+ * 通过服务端中继发送 Telegram 消息（fire-and-forget，失败静默）
+ *
+ * 由服务端读取 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 环境变量并发送，
+ * 避免直接从浏览器调用 api.telegram.org（CORS 封锁 + Token 暴露风险）。
+ */
+export function sendTelegramViaServer(message: string): void {
+  fetch(`${SERVER_URL}/api/telegram`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ message }),
+  }).catch(() => {
+    // Server not running — silently ignore.
+  });
+}
