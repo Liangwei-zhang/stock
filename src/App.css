@@ -10,13 +10,13 @@
   --bg-surface:    #161b22;
   --bg-elevated:   #1c2333;
   --bg-hover:      #21262d;
-  --border:        rgba(255,255,255,0.08);
+  --border:        rgba(255,255,255,0.1);
   --border-active: rgba(24,144,255,0.5);
   --text-primary:  #e6edf3;
-  --text-secondary:#8b949e;
+  --text-secondary:#9ca3af;
   --text-muted:    #484f58;
   --accent:        #1890ff;
-  --green:         #3fb950;
+  --green:         #4ade80;
   --red:           #f85149;
   --yellow:        #d29922;
   --purple:        #a371f7;
@@ -168,7 +168,7 @@ html, body, #root {
 .chart-legend { display: flex; gap: 12px; align-items: center; }
 .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-.chart-container { height: 360px; }
+.chart-container { height: min(360px, 40vh); }
 
 /* ── ANALYSIS GRID ── */
 .analysis-grid {
@@ -495,4 +495,127 @@ html, body, #root {
   .watchlist-sidebar { display: none; }
   .header-center { display: none; }
   .perf-grid { grid-template-columns: repeat(4, 1fr); }
+  .analysis-grid { grid-template-columns: 1fr; }
 }
+
+/* ── CARD HOVER EFFECT ── */
+.analysis-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.analysis-card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+
+/* ── SIDEBAR ACTIVE LEFT INDICATOR ── */
+.watchlist-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── TRANSITION FOR INTERACTIVE ELEMENTS ── */
+.watchlist-item,
+.trading-tab,
+.at-symbol-chip {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes priceFlashUp {
+  0%   { background: rgba(74,222,128,0); }
+  30%  { background: rgba(74,222,128,0.25); }
+  100% { background: rgba(74,222,128,0); }
+}
+
+@keyframes priceFlashDown {
+  0%   { background: rgba(248,81,73,0); }
+  30%  { background: rgba(248,81,73,0.25); }
+  100% { background: rgba(248,81,73,0); }
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(24,144,255,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(24,144,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(24,144,255,0); }
+}
+
+@keyframes alertBounce {
+  0%, 100% { transform: translateY(0); }
+  30%       { transform: translateY(-3px); }
+  60%       { transform: translateY(-1px); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes logSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── LOADING SPIN FADE IN ── */
+.ant-spin { animation: fadeIn 0.3s ease; }
+
+/* ── PRICE FLASH ── */
+.wi-price.flash-up   { animation: priceFlashUp   0.5s ease; }
+.wi-price.flash-down { animation: priceFlashDown 0.5s ease; }
+
+/* ── PULSE FOR ACTIVE AUTO TRADE BUTTON ── */
+.auto-trade-active { animation: pulse 2s ease-in-out infinite; }
+
+/* ── ALERT BADGE BOUNCE ── */
+.alert-badge-bounce { animation: alertBounce 0.4s ease; }
+
+/* ── ALERT PANEL SLIDE ── */
+.alert-panel-enter { animation: slideInRight 0.25s ease forwards; }
+.alert-panel-exit  { animation: slideOutRight 0.2s ease forwards; }
+
+/* ── DECISION LOG SLIDE IN ── */
+.decision-log-entry { animation: logSlideIn 0.2s ease; }
+
+/* ── MINI SPARKLINE ── */
+.wi-sparkline {
+  display: block;
+  margin-top: 4px;
+}
+
+/* ── POSITION PROFIT BAR ── */
+.position-profit-bar {
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 4px;
+  background: linear-gradient(to right, var(--green), rgba(74,222,128,0.3));
+  transition: width 0.3s ease;
+}
+.position-profit-bar.negative {
+  background: linear-gradient(to right, var(--red), rgba(248,81,73,0.3));
+}
+
+/* ── FIRST RANK GOLD BORDER ── */
+.sim-user-card.rank-1 {
+  box-shadow: 0 0 0 2px rgba(255,215,0,0.5), 0 4px 16px rgba(255,215,0,0.15);
+}
+
+/* ── LOSS USER RED BORDER ── */
+.sim-user-card.loss {
+  border-color: rgba(248,81,73,0.3) !important;
+}
+

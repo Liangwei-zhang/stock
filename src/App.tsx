@@ -16,7 +16,6 @@ import { SearchModal }        from './components/SearchModal';
 import { Alert, WatchlistItem } from './types';
 import './App.css';
 
-const { Content } = Layout;
 const { Text }    = Typography;
 
 const SOURCE_CONFIG = {

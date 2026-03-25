@@ -132,7 +132,7 @@ class StockService {
     for (const item of stored) await this._loadFromDB(item);
     this._refreshAllHistories();
 
-    setTimeout(() => pruneOldHistory(), 5000);
+    setTimeout(() => { try { pruneOldHistory(); } catch (e) { console.warn('[stockService] pruneOldHistory failed:', e); } }, 5000);
   }
 
   // ── 从 DB 加载（IDB + SQLite）───────────────────────────────────────────────
@@ -172,7 +172,9 @@ class StockService {
       this.meta.set(item.symbol, { source: 'real', lastUpdated: Date.now() });
       // 异步写双层 DB
       marketDB.saveOHLCV(toOHLCV(hist, item.assetType)).catch(() => {});
-    } catch { /* 静默失败，保持现有数据 */ }
+    } catch (e) {
+      console.warn(`[stockService] _fetchRealHistory failed for ${item.symbol}:`, e);
+    }
   }
 
   // ── 公开：更新报价（每 20s）─────────────────────────────────────────────────

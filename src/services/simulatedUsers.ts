@@ -226,6 +226,9 @@ interface PersistedUserState {
   allowedSymbols: string[];
   positions:      Array<[string, SimPosition]>;
   trades:         SimTrade[];
+  log:            DecisionLog[];
+  paused:         boolean;
+  strategy:       UserStrategy;
 }
 
 function persist(state: SimUserState): void {
@@ -236,9 +239,23 @@ function persist(state: SimUserState): void {
       allowedSymbols: state.allowedSymbols,
       positions:      Array.from(state.positions.entries()),
       trades:         state.trades,
+      log:            state.log,
+      paused:         state.paused,
+      strategy:       state.user.strategy,
     };
     localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
   } catch {}
+}
+
+/** 節流持久化：每個用戶最多每 5 秒寫一次 localStorage */
+const _throttleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+function persistThrottled(state: SimUserState): void {
+  const key = state.user.id;
+  if (_throttleTimers.has(key)) return;
+  _throttleTimers.set(key, setTimeout(() => {
+    _throttleTimers.delete(key);
+    persist(state);
+  }, 5000));
 }
 
 function restore(user: SimulatedUser, initBalance: number): SimUserState {
@@ -252,13 +269,20 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
     const raw = localStorage.getItem(LS_KEY_PREFIX + user.id);
     if (!raw) return blank;
     const s: PersistedUserState = JSON.parse(raw);
+    // 若持久化中有自定義策略，則覆蓋預設值
+    const restoredUser = s.strategy
+      ? { ...user, strategy: s.strategy }
+      : user;
     return {
       ...blank,
+      user:           restoredUser,
       balance:        s.balance,
       initBalance:    s.initBalance ?? initBalance,
       allowedSymbols: s.allowedSymbols ?? [],
       positions:      new Map(s.positions),
       trades:         s.trades,
+      log:            s.log ?? [],
+      paused:         s.paused ?? false,
     };
   } catch { return blank; }
 }
@@ -304,6 +328,7 @@ function decide(
     }
     // 持仓中，无退出条件 → 持有
     addLog(state, { ts: Date.now(), symbol, action: 'hold', price, reason: `持倉中 (SL${pos.stopLoss.toFixed(2)} TP${pos.takeProfit.toFixed(2)})` });
+    persistThrottled(state);
     return;
   }
 
@@ -314,6 +339,7 @@ function decide(
       state.paused = false; // 回撤回复到阈值70%时解除
     } else {
       addLog(state, { ts: Date.now(), symbol, action: 'paused', price, reason: `風控暫停中（回撤 ${(dd*100).toFixed(1)}%）` });
+      persistThrottled(state);
       return;
     }
   }
@@ -321,6 +347,7 @@ function decide(
   // 检查并发持仓上限
   if (state.positions.size >= strategy.maxConcurrent) {
     addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: `已達最大持倉數 ${strategy.maxConcurrent}` });
+    persistThrottled(state);
     return;
   }
 
@@ -377,6 +404,7 @@ function decide(
 
   if (!wantLong && !wantShort) {
     addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '無符合條件的信號' });
+    persistThrottled(state);
     return;
   }
 
@@ -384,6 +412,7 @@ function decide(
   const capital  = state.balance * strategy.positionPct;
   if (capital < price * 0.001) {
     addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '餘額不足' });
+    persistThrottled(state);
     return;
   }
   const qty     = Math.floor((capital / price) * 10_000) / 10_000;
@@ -392,6 +421,7 @@ function decide(
 
   if (state.balance < total + fee) {
     addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '餘額不足' });
+    persistThrottled(state);
     return;
   }
 
@@ -596,6 +626,7 @@ class SimulatedUserService {
     const state = this.states.get(userId);
     if (!state) return;
     state.user = { ...state.user, strategy: { ...state.user.strategy, ...patch } };
+    persist(state);
     this.onUpdate?.();
   }
 
