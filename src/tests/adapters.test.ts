@@ -350,7 +350,8 @@ describe('adapters/yahoo.ts — YahooAdapter', () => {
     const urls: string[] = [];
     vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
       urls.push(url);
-      if (url.includes('localhost:3001')) {
+      // 前後端整合後使用相對路徑 /api/yahoo
+      if (url.includes('/api/yahoo')) {
         return Promise.resolve({
           ok: true,
           json: async () => makeYahooResponse(5, 'AAPL'),
@@ -361,6 +362,6 @@ describe('adapters/yahoo.ts — YahooAdapter', () => {
     const { YahooAdapter } = await import('../adapters/yahoo');
     const data = await new YahooAdapter().fetchHistory('AAPL');
     expect(data.length).toBe(5);
-    expect(urls[0]).toContain('localhost:3001');
+    expect(urls[0]).toContain('/api/yahoo');
   });
 });

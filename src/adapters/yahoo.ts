@@ -12,7 +12,8 @@
 import type { IDataSourceAdapter, QuoteData } from '../core/types';
 import type { StockData, AssetType } from '../types';
 
-const SERVER_PROXY = 'http://localhost:3001/api/yahoo';
+// 使用相對路徑，自動適配任何 port（前後端已整合為單一服務）
+const SERVER_PROXY = '/api/yahoo';
 const YAHOO_DIRECT = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
 async function fetchWithTimeout(url: string, ms = 10000): Promise<Response> {
@@ -43,12 +44,11 @@ export class YahooAdapter implements IDataSourceAdapter {
   readonly supportedAssetTypes: AssetType[] = ['equity', 'etf', 'index', 'futures', 'other'];
 
   async isAvailable(): Promise<boolean> {
-    // 检查本地 server 是否在线
+    // 檢查後端代理是否可用（相對路徑，與當前服務同 port）
     try {
-      const res = await fetchWithTimeout('http://localhost:3001/health', 2000);
+      const res = await fetchWithTimeout('/health', 2000);
       if (res.ok) return true;
     } catch { /* ignore */ }
-    // server 不可用，但 Yahoo 直连也许可以（不做网络探测，交给实际调用时处理）
     return true;
   }
 

@@ -7,9 +7,8 @@
 import { SearchResult, AssetType } from '../types';
 
 const SEARCH_URL = 'https://query1.finance.yahoo.com/v1/finance/search';
-// 後端搜尋代理端點（避免使用第三方 corsproxy.io，保護用戶查詢隱私）
-const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? 'http://localhost:3001';
-const BACKEND_SEARCH = `${SERVER_URL}/api/search`;
+// 後端搜尋代理端點（使用相對路徑，自動適配任何 port）
+const BACKEND_SEARCH = '/api/search';
 
 // ─── 热门资产预设（无网络时展示）─────────────────────────────────────────────
 

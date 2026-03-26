@@ -14,23 +14,19 @@ import 'dotenv/config';
 import express from 'express';
 import path    from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { createServer as createNetServer } from 'net';
 
 const app  = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// 仅允许本地开发来源，防止跨站请求伪造
+// 前後端已整合為單一服務，CORS 僅需支援本機開發的各種慣用 port
 const ALLOWED_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://127.0.0.1:5173',
-  'http://localhost:3001',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:8080',
-  'http://127.0.0.1:8080',
-  'http://localhost:8081',
-  'http://127.0.0.1:8081',
 ]);
 
 app.use((req, res, next) => {
@@ -67,16 +63,19 @@ function requireApiKey(req: express.Request, res: express.Response, next: expres
 app.use(express.json({ limit: '10mb' }));
 
 // ─── 速率限制（防暴力請求 / DoS）────────────────────────────────────────────
-// 每個 IP 60 秒內最多 120 次請求（約 2 req/s），超限回 429
+// 本機迴環位址（127.0.0.1 / ::1）直接放行，僅對外部 IP 計數
 const _rlMap = new Map<string, { count: number; reset: number }>();
 app.use((req, res, next) => {
-  const key  = String(req.ip ?? 'unknown');
+  const clientIp = (req.socket.remoteAddress ?? '').replace('::ffff:', '');
+  if (clientIp === '127.0.0.1' || clientIp === '::1') { next(); return; }
+
+  const key  = clientIp;
   const now  = Date.now();
   const slot = _rlMap.get(key);
   if (!slot || now > slot.reset) {
     _rlMap.set(key, { count: 1, reset: now + 60_000 });
     next();
-  } else if (slot.count < 120) {
+  } else if (slot.count < 300) {
     slot.count++;
     next();
   } else {
@@ -138,7 +137,45 @@ async function initDB() {
   }
 }
 
-initDB().then(() => {
+// ─── 整合啟動（DB + Vite middleware + HTTP 監聽）────────────────────────────
+
+async function setupFrontend() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const hmrPort = await findFreePort(24678); // HMR WebSocket 用獨立 port
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: { port: hmrPort },
+        },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      console.log('⚡  Vite dev middleware 已掛載（支援 HMR 熱更新）');
+    } catch (e: any) {
+      console.warn('⚠️  Vite middleware 掛載失敗，僅提供 API 服務:', e.message);
+    }
+  } else {
+    // 生產模式：serve dist/ 靜態資源
+    const distPath = path.join(process.cwd(), 'dist');
+    if (existsSync(distPath)) {
+      app.use(express.static(distPath, { index: false }));
+      app.get('*', (_req: express.Request, res: express.Response) =>
+        res.sendFile(path.join(distPath, 'index.html'))
+      );
+      console.log('📦 生產模式：服務 dist/ 靜態資源');
+    } else {
+      console.warn('⚠️  dist/ 不存在，請先執行 npm run build');
+    }
+  }
+}
+
+async function start() {
+  // 初始化資料庫
+  await initDB();
+
   // 從 SQLite 恢復持久化預警（伺服器重啟後不丟失）
   if (db) {
     try {
@@ -146,12 +183,53 @@ initDB().then(() => {
         `SELECT data FROM alerts ORDER BY created_at DESC LIMIT ${MAX_ALERTS}`
       ).all() as { data: string }[];
       alerts = rows.map(r => JSON.parse(r.data)).reverse();
-      console.log(`📋 Restored ${alerts.length} alert(s) from DB.`);
+      console.log(`📋 已從資料庫恢復 ${alerts.length} 條預警`);
     } catch (err: any) {
-      console.warn('⚠️  Failed to restore alerts from DB:', err?.message);
+      console.warn('⚠️  恢復預警失敗:', err?.message);
     }
   }
-}).catch(console.error);
+
+  // 掛載前端（Vite dev 或 static dist）
+  await setupFrontend();
+
+  // 自動尋找空閒 port（從 PORT 開始往上找）
+  const actualPort = await findFreePort(PORT);
+  if (actualPort !== PORT) {
+    console.log(`⚠️  Port ${PORT} 已被佔用，改用 ${actualPort}`);
+  }
+
+  app.listen(actualPort, () => {
+    const isDev = process.env.NODE_ENV !== 'production';
+    console.log(`\n🚀 服務已啟動 → http://localhost:${actualPort}`);
+    console.log(`  模式：${isDev ? '開發（前後端合一，HMR 已啟用）' : '生產（serve dist/）'}`);
+    console.log(`  Alerts SSE  → GET  /alerts-stream`);
+    console.log(`  OHLCV write → POST /db/ohlcv`);
+    console.log(`  OHLCV read  → GET  /db/ohlcv/:symbol`);
+    console.log(`  Yahoo proxy → GET  /api/yahoo/:symbol`);
+    console.log(`  Telegram    → POST /api/telegram`);
+    console.log(`  Health      → GET  /health\n`);
+
+    if (!process.env.API_KEY) {
+      console.warn('⚠️  [安全警告] API_KEY 未設定 — 寫入端點僅允許本機迴環訪問');
+    }
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      console.warn('⚠️  TELEGRAM_BOT_TOKEN 未設定 — Telegram 通知已停用');
+    }
+  });
+}
+
+/** 從 startPort 開始尋找第一個可用的 port */
+function findFreePort(startPort: number): Promise<number> {
+  return new Promise((resolve) => {
+    const server = createNetServer();
+    server.listen(startPort, () => {
+      server.close(() => resolve(startPort));
+    });
+    server.on('error', () => resolve(findFreePort(startPort + 1)));
+  });
+}
+
+start().catch(console.error);
 
 // ─── SSE 预警广播 ─────────────────────────────────────────────────────────────
 
@@ -393,23 +471,4 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// ─── 启动 ─────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 API server ready on http://localhost:${PORT}`);
-  console.log(`  Alerts SSE  → GET  /alerts-stream`);
-  console.log(`  OHLCV write → POST /db/ohlcv`);
-  console.log(`  OHLCV read  → GET  /db/ohlcv/:symbol`);
-  console.log(`  Yahoo proxy → GET  /api/yahoo/:symbol`);
-  console.log(`  DB stats    → GET  /db/stats`);
-  console.log(`  Health      → GET  /health\n`);
-
-  // 啟動時檢查關鍵環境變數，提早發現配置問題
-  if (!process.env.API_KEY) {
-    console.warn('⚠️  [安全警告] API_KEY 未設定 — 寫入端點僅允許本機迴環訪問');
-    console.warn('   生產環境請在 .env 設定 API_KEY（建議使用 openssl rand -hex 32 產生）');
-  }
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.warn('⚠️  TELEGRAM_BOT_TOKEN 未設定 — Telegram 通知已停用');
-  }
-});

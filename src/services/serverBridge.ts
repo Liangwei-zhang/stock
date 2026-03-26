@@ -8,7 +8,8 @@
  *  - 推送是 fire-and-forget：失败不会影响前端正常运行。
  */
 
-const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? 'http://localhost:3001';
+// 前後端已整合為單一服務，使用相對路徑，自動適配任何端口
+const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? '';
 
 /** 从环境变量读取 API Key（VITE_API_KEY），用于需要鉴权的写入接口 */
 const API_KEY = import.meta.env.VITE_API_KEY ?? '';
