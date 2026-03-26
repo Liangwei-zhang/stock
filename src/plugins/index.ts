@@ -14,8 +14,10 @@ import { MeanReversionPlugin } from './mean-reversion';
 import { VolumeBreakoutPlugin } from './volume-breakout';
 import { MacdCrossoverPlugin } from './macd-crossover';
 import { CompositeEnsemblePlugin } from './composite-ensemble';
+import { SMCProPlugin } from './smc-pro';
 
 // ── 注册所有插件 ──────────────────────────────────────────────────────────────
+pluginRegistry.register(new SMCProPlugin());
 pluginRegistry.register(new SMCGen3Plugin());
 pluginRegistry.register(new TrendFollowPlugin());
 pluginRegistry.register(new MeanReversionPlugin());
