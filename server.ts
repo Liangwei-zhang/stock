@@ -212,8 +212,11 @@ async function start() {
     if (!process.env.API_KEY) {
       console.warn('⚠️  [安全警告] API_KEY 未設定 — 寫入端點僅允許本機迴環訪問');
     }
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      console.warn('⚠️  TELEGRAM_BOT_TOKEN 未設定 — Telegram 通知已停用');
+    const tgTargets = getTelegramTargets();
+    if (tgTargets.length === 0) {
+      console.warn('⚠️  Telegram 未設定 — 請在 .env 配置 TELEGRAM_TARGETS 或 TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID');
+    } else {
+      console.log(`📱 Telegram 已設定 ${tgTargets.length} 個推播目標：${tgTargets.map(t => t.name ?? t.chatId).join('、')}`);
     }
   });
 }
@@ -414,14 +417,66 @@ app.get('/api/yahoo/:symbol', async (req, res) => {
   }
 });
 
-// ─── Telegram 通知代理 ────────────────────────────────────────────────────────
-// Server 端統一發送，避免 CORS 問題，且 Token 不暴露於前端
+// ─── Telegram 通知代理（支援多目標）────────────────────────────────────────
+// 支援兩種設定方式（向下相容）：
+//   方式一（多目標）：TELEGRAM_TARGETS='[{"botToken":"xxx","chatId":"yyy","name":"主帳號"},{...}]'
+//   方式二（單目標）：TELEGRAM_BOT_TOKEN=xxx  +  TELEGRAM_CHAT_ID=yyy
 
-app.post('/api/telegram', requireApiKey, async (req, res) => {
+interface TelegramTarget {
+  botToken: string;
+  chatId:   string;
+  name?:    string;
+}
+
+function getTelegramTargets(): TelegramTarget[] {
+  // 優先讀取多目標設定
+  const raw = process.env.TELEGRAM_TARGETS;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(
+          (t): t is TelegramTarget =>
+            typeof t?.botToken === 'string' && t.botToken.length > 0 &&
+            typeof t?.chatId   === 'string' && t.chatId.length   > 0,
+        );
+      }
+    } catch {
+      console.error('❌ TELEGRAM_TARGETS JSON 解析失敗，請確認格式正確');
+    }
+  }
+  // 向下相容：回退到單目標設定
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId   = process.env.TELEGRAM_CHAT_ID;
+  if (botToken && chatId) return [{ botToken, chatId, name: 'default' }];
+  return [];
+}
 
-  if (!botToken || !chatId) {
+async function sendToOneTelegramTarget(
+  target: TelegramTarget,
+  message: string,
+): Promise<{ name: string; ok: boolean; reason?: string }> {
+  const label = target.name ?? target.chatId;
+  try {
+    const url = `https://api.telegram.org/bot${target.botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ chat_id: target.chatId, text: message, parse_mode: 'Markdown' }),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      return { name: label, ok: false, reason: body };
+    }
+    return { name: label, ok: true };
+  } catch (err: any) {
+    return { name: label, ok: false, reason: err.message };
+  }
+}
+
+app.post('/api/telegram', requireApiKey, async (req, res) => {
+  const targets = getTelegramTargets();
+  if (targets.length === 0) {
     res.json({ success: false, reason: 'not_configured' });
     return;
   }
@@ -431,25 +486,19 @@ app.post('/api/telegram', requireApiKey, async (req, res) => {
     res.status(400).json({ success: false, reason: 'missing message' });
     return;
   }
-  // 限制消息长度（Telegram 最大 4096 字符）
   const safeMessage = message.slice(0, 4096);
 
-  try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const response = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ chat_id: chatId, text: safeMessage, parse_mode: 'Markdown' }),
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      res.status(502).json({ success: false, reason: body });
-      return;
-    }
-    res.json({ success: true });
-  } catch (err: any) {
-    res.status(502).json({ success: false, reason: err.message });
-  }
+  // 並行發送給所有目標，任一失敗不影響其他
+  const results = await Promise.all(
+    targets.map(t => sendToOneTelegramTarget(t, safeMessage)),
+  );
+
+  const allOk   = results.every(r => r.ok);
+  const anyOk   = results.some(r => r.ok);
+  res.status(allOk ? 200 : anyOk ? 207 : 502).json({
+    success: anyOk,
+    results,
+  });
 });
 
 // ─── 健康检查 ─────────────────────────────────────────────────────────────────
