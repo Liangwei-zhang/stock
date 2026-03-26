@@ -385,6 +385,89 @@ function _dm(highs: number[], lows: number[], i: number): [number, number] {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  ATR-14（威爾德平滑真實波動度）—— 止盈止損核心數據
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 14 期威爾德 ATR（Wilder's Smoothed Average True Range）
+ * 是計算止損緩衝的最可靠波動度指標
+ */
+function calcATR14(highs: number[], lows: number[], closes: number[], period = 14): number {
+  const n = closes.length;
+  if (n < period + 1) return 0;
+
+  // 初始化：前 period 根 TR 的簡單平均
+  let atr = 0;
+  for (let i = 1; i <= period; i++) {
+    const tr = Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i - 1]),
+      Math.abs(lows[i]  - closes[i - 1]),
+    );
+    atr += tr;
+  }
+  atr /= period;
+
+  // 威爾德平滑：後續以 (atr×(period-1) + tr) / period 遞推
+  for (let i = period + 1; i < n; i++) {
+    const tr = Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i - 1]),
+      Math.abs(lows[i]  - closes[i - 1]),
+    );
+    atr = (atr * (period - 1) + tr) / period;
+  }
+  return atr;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  波段高低點識別 —— 止盈止損結構性錨位
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 在最近 lookback 根 K 線中找到最近的兩個確認波段高點和低點。
+ * 判定規則：以目標 bar 為中心，左右各 3 根均低於（或高於）它 → 確認。
+ * 需留尾部 3 根未確認區，故掃描上限為 data.length - 3。
+ */
+function calcSwingLevels(
+  highs: number[], lows: number[], lookback = 60,
+): { swingHigh: number; swingLow: number; prevSwingHigh: number; prevSwingLow: number } {
+  const n     = highs.length;
+  const start = Math.max(3, n - lookback);
+  const end   = n - 3; // 最後 3 根尚未確認，跳過
+
+  const foundHighs: number[] = [];
+  const foundLows:  number[] = [];
+
+  for (let i = start; i < end; i++) {
+    // 3 根 pivot high
+    let isHigh = true;
+    for (let j = 1; j <= 3; j++) {
+      if (highs[i] <= highs[i - j] || highs[i] <= highs[i + j]) { isHigh = false; break; }
+    }
+    if (isHigh) foundHighs.push(highs[i]);
+
+    // 3 根 pivot low
+    let isLow = true;
+    for (let j = 1; j <= 3; j++) {
+      if (lows[i] >= lows[i - j] || lows[i] >= lows[i + j]) { isLow = false; break; }
+    }
+    if (isLow) foundLows.push(lows[i]);
+  }
+
+  // foundHighs / foundLows 是時間正序；逆序取最近兩個
+  foundHighs.reverse();
+  foundLows.reverse();
+
+  return {
+    swingHigh:     foundHighs[0] ?? 0,
+    prevSwingHigh: foundHighs[1] ?? 0,
+    swingLow:      foundLows[0]  ?? 0,
+    prevSwingLow:  foundLows[1]  ?? 0,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  主入口（带 LRU 缓存）
 // ═══════════════════════════════════════════════════════════════
 
@@ -424,6 +507,8 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
   const rsiBearDiv = detectRSIBearishDivergence(closes, rsi14Arr, 30);
   const vp       = calculateVolumeProfile(data, 60, 24);
   const adx      = calculateADXLast(highs, lows, closes, 14);
+  const atr14    = calcATR14(highs, lows, closes);
+  const swings   = calcSwingLevels(highs, lows);
 
   const result: TechnicalIndicators = {
     ma5:  ma5Arr[n]  || 0, ma10: ma10Arr[n] || 0,
@@ -442,6 +527,8 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
     bollWidth: squeeze.width, bollSqueezing: squeeze.squeezing,
     poc: vp.poc, valueAreaHigh: vp.vah, valueAreaLow: vp.val,
     adx: adx.adx, diPlus: adx.diPlus, diMinus: adx.diMinus,
+    atr14,
+    ...swings,
   };
 
   cacheSet(key, result);
@@ -458,6 +545,7 @@ function emptyIndicators(): TechnicalIndicators {
     bollUp: 0, bollMb: 0, bollDn: 0, bollWidth: 0, bollSqueezing: false,
     poc: 0, valueAreaHigh: 0, valueAreaLow: 0,
     adx: 0, diPlus: 0, diMinus: 0,
+    atr14: 0, swingHigh: 0, swingLow: 0, prevSwingHigh: 0, prevSwingLow: 0,
   };
 }
 

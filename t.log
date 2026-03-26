@@ -1,0 +1,17 @@
+Analyzing over symbols: AAPL, AMZN, BTC, GLD, GOOGL, META, MSFT, NVDA, ORCL, SLV, TSLA, USO
+
+--- Final Aggregated Win Rates ---
+[SMC 增强版 (ICT Pro)] Trades:   39, WinRate: 48.72%, Net Profit: $-22351494.82
+[SMC Gen 3.1] Trades:   39, WinRate: 48.72%, Net Profit: $-22351494.82
+[趋势跟踪      ] Trades:   69, WinRate: 40.58%, Net Profit: $-21556703.30
+[多策略融合     ] Trades:   72, WinRate: 37.50%, Net Profit: $-22351809.11
+[均值回歸策略    ] Trades:   85, WinRate: 34.12%, Net Profit: $97621552184.11
+[量能突破策略    ] Trades:   82, WinRate: 32.93%, Net Profit: $-20803816.55
+[MACD 交叉策略 ] Trades:  228, WinRate: 25.88%, Net Profit: $-20136043.67
+savePOIs failed Error: IndexedDB unavailable
+    at openDB (C:\Users\nico_\stock\src\services\storageService.ts:40:42)
+    at savePOIs (C:\Users\nico_\stock\src\services\storageService.ts:271:22)
+    at POIManager.saveToDB (C:\Users\nico_\stock\src\utils\poi-state.ts:293:11)
+    at Timeout._onTimeout (C:\Users\nico_\stock\src\utils\poi-state.ts:269:12)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)

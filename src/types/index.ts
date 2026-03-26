@@ -60,6 +60,13 @@ export interface TechnicalIndicators {
   adx: number;           // >25 强趋势，<20 弱趋势/盘整
   diPlus: number;
   diMinus: number;
+
+  // ── 止盈止損核心字段（供 calcTPSL 專用）──
+  atr14: number;         // 14 期威爾德 ATR：真實波動度，止損緩衝基準
+  swingHigh: number;     // 最近一個確認波段頂（3 根高點）
+  swingLow: number;      // 最近一個確認波段底（3 根低點）
+  prevSwingHigh: number; // 前一個波段頂（斐波那契擴展起點）
+  prevSwingLow: number;  // 前一個波段底（斐波那契擴展起點）
 }
 
 export interface SignalResult {
