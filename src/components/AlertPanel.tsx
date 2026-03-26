@@ -97,6 +97,25 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
                 {TYPE_LABEL[alert.type]}信號
                 · ${alert.price.toFixed(alert.price >= 100 ? 2 : 4)} · {alert.score}分
               </div>
+              {(alert.takeProfit || alert.stopLoss) && (
+                <div style={{ display: 'flex', gap: 8, margin: '3px 0', fontSize: 11 }}>
+                  {alert.takeProfit && (
+                    <span style={{ color: '#3fb950', fontWeight: 600 }}>
+                      🎯 止盈 ${alert.takeProfit.toFixed(alert.takeProfit >= 100 ? 2 : 4)}
+                    </span>
+                  )}
+                  {alert.stopLoss && (
+                    <span style={{ color: '#f85149', fontWeight: 600 }}>
+                      🛡️ 止損 ${alert.stopLoss.toFixed(alert.stopLoss >= 100 ? 2 : 4)}
+                    </span>
+                  )}
+                  {alert.takeProfit && alert.stopLoss && (
+                    <span style={{ color: '#8b949e', fontSize: 10 }}>
+                      R:R {(Math.abs(alert.takeProfit - alert.price) / Math.abs(alert.stopLoss - alert.price)).toFixed(1)}:1
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="alert-reasons">
                 {alert.reasons.slice(0, 3).map((r, i) =>
                   <span key={i} className="reason-tag ant-tag">{r}</span>

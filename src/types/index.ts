@@ -87,6 +87,8 @@ export interface Alert {
   timestamp: number;
   read: boolean;
   message: string;
+  takeProfit?: number;  // 止盈價位
+  stopLoss?:   number;  // 止損價位
 }
 
 export interface KLineData {

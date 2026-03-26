@@ -9,10 +9,76 @@
  *   TELEGRAM_CHAT_ID=xxx
  */
 
-import { Alert, StockAnalysis } from '../types';
+import { Alert, StockAnalysis, TechnicalIndicators } from '../types';
 import { pushAlertToServer, sendTelegramViaServer } from './serverBridge';
 
 const DEDUP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2小时去重
+
+/**
+ * 根據技術指標計算止盈止損價位
+ * 多空：止損取布林下軌 / VAL（支撑區下緣），止盈取布林上軌 / VAH（阻力區上緣）
+ * 做空：反之
+ * 最小 R:R = 1.5，止損不超過價格的 8%
+ */
+function calcTPSL(
+  price: number,
+  type: 'buy' | 'sell' | 'top' | 'bottom',
+  ind: TechnicalIndicators,
+): { takeProfit: number; stopLoss: number } {
+  const isLong = type === 'buy' || type === 'bottom';
+
+  // ATR 估算：布林帶寬 = (upper - lower)，入場風險大約為它的 1/4
+  const bollWidth = ind.bollUp - ind.bollDn;
+  const atr       = bollWidth > 0 ? bollWidth / 4 : price * 0.015;
+
+  if (isLong) {
+    // 止損：取「已在價格下方」的支撑位中最高的一個
+    const slCands = [ind.bollDn, ind.valueAreaLow]
+      .filter(v => v > 0 && v < price);
+    let stopLoss = slCands.length
+      ? Math.max(...slCands)
+      : price - atr * 2;
+    stopLoss = Math.max(stopLoss, price * 0.92);  // 最大止損 8%
+
+    const risk = price - stopLoss;
+
+    // 止盈：取「已在價格上方」的阻力位中最低的一個，且满足 R:R ≥1.5
+    const minTP     = price + risk * 1.5;
+    const tpCands   = [ind.bollUp, ind.valueAreaHigh]
+      .filter(v => v > 0 && v >= minTP);
+    const takeProfit = tpCands.length
+      ? Math.min(...tpCands)
+      : price + risk * 2;
+
+    return {
+      takeProfit: Math.max(takeProfit, minTP),
+      stopLoss,
+    };
+  } else {
+    // 止損：取「已在價格上方」的阻力位中最低的一個
+    const slCands = [ind.bollUp, ind.valueAreaHigh]
+      .filter(v => v > 0 && v > price);
+    let stopLoss = slCands.length
+      ? Math.min(...slCands)
+      : price + atr * 2;
+    stopLoss = Math.min(stopLoss, price * 1.08);  // 最大止損 8%
+
+    const risk = stopLoss - price;
+
+    // 止盈：取「已在價格下方」的支撑位中最高的一個，且满足 R:R ≥1.5
+    const minTP     = price - risk * 1.5;
+    const tpCands   = [ind.bollDn, ind.valueAreaLow]
+      .filter(v => v > 0 && v <= minTP);
+    const takeProfit = tpCands.length
+      ? Math.max(...tpCands)
+      : price - risk * 2;
+
+    return {
+      takeProfit: Math.min(takeProfit, minTP),
+      stopLoss,
+    };
+  }
+}
 
 class AlertService {
   private alerts: Alert[] = [];
@@ -57,6 +123,7 @@ class AlertService {
       timestamp: now,
       read:      false,
       message:   `${icons[type]} ${analysis.symbol} ${typeLabel[type]}信號 [${lvLabel[signal.level]}] $${analysis.price.toFixed(2)} | ${signal.score}分`,
+      ...calcTPSL(analysis.price, type, analysis.indicators),
     };
 
     this.alerts.unshift(alert);
@@ -66,12 +133,16 @@ class AlertService {
     pushAlertToServer(alert);
 
     // Send to Telegram via server（服務端統一發送，避免 CORS，Token 不暴露於前端）
+    const fmt = (v: number) => `$${v.toFixed(v >= 100 ? 2 : 4)}`;
     const tgMsg =
-      `🛎️ *股票預警*\n\n` +
+      `🚸 *股票預警*\n\n` +
       `${icons[type]} *${analysis.symbol}* ${typeLabel[type]}信號\n` +
-      `等級：${lvLabel[signal.level]}\n` +
-      `價格：$${analysis.price.toFixed(2)}\n` +
-      `評分：${signal.score}分\n` +
+      `等級：${lvLabel[signal.level]}  |  價格：${fmt(analysis.price)}  |  評分：${signal.score}分\n` +
+      (alert.takeProfit ? `🎯 止盈：${fmt(alert.takeProfit)}` : '') +
+      (alert.stopLoss   ? `  🛡️ 止損：${fmt(alert.stopLoss)}` : '') +
+      (alert.takeProfit && alert.stopLoss
+        ? `  \`R:R ${ ((Math.abs(alert.takeProfit - analysis.price)) / Math.abs(alert.stopLoss - analysis.price)).toFixed(1) }:1\`\n`
+        : '\n') +
       signal.reasons.slice(0, 3).map(r => '• ' + r).join('\n');
     sendTelegramViaServer(tgMsg);
 
