@@ -468,6 +468,121 @@ function calcSwingLevels(
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  訂單塊識別（Order Block）—— Smart Money Concepts 核心
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 在最近 40 根 K 線中找到最新的看漲 / 看跌訂單塊。
+ *
+ * 看漲 OB（bullish order block）：
+ *   做空K（收 ≤ 開）之後 3 根內有收盤突破此K高點 → 機構在此K累積多頭
+ *   → bullOBLow = 該K低點（最佳多頭止損：跌破即失效）
+ *
+ * 看跌 OB（bearish order block）：
+ *   做多K（收 ≥ 開）之後 3 根內有收盤跌破此K低點 → 機構在此K分發空頭
+ *   → bearOBHigh = 該K高點（最佳空頭止損：突破即失效）
+ */
+function calcOrderBlocks(
+  opens: number[], highs: number[], lows: number[], closes: number[],
+): { bullOBHigh: number; bullOBLow: number; bearOBHigh: number; bearOBLow: number } {
+  const n = closes.length;
+  let bullOBHigh = 0, bullOBLow = 0;
+  let bearOBHigh = 0, bearOBLow = 0;
+
+  const searchStart = Math.max(1, n - 40);
+
+  // 從最新往最舊掃（找到各自第一個立即停止）
+  for (let i = n - 3; i >= searchStart && (bullOBHigh === 0 || bearOBHigh === 0); i--) {
+    // ── 看漲 OB：這根是做空K線（收 ≤ 開）──
+    if (bullOBHigh === 0 && closes[i] <= opens[i]) {
+      for (let j = i + 1; j <= Math.min(i + 3, n - 1); j++) {
+        if (closes[j] > highs[i]) {          // 確認：後續強力上漲突破此K高點
+          bullOBHigh = highs[i];
+          bullOBLow  = lows[i];
+          break;
+        }
+      }
+    }
+    // ── 看跌 OB：這根是做多K線（收 ≥ 開）──
+    if (bearOBHigh === 0 && closes[i] >= opens[i]) {
+      for (let j = i + 1; j <= Math.min(i + 3, n - 1); j++) {
+        if (closes[j] < lows[i]) {           // 確認：後續強力下跌跌破此K低點
+          bearOBHigh = highs[i];
+          bearOBLow  = lows[i];
+          break;
+        }
+      }
+    }
+  }
+
+  return { bullOBHigh, bullOBLow, bearOBHigh, bearOBLow };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  流動性聚集池（Liquidity Pools / Equal Highs & Lows）
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 識別等高點群（equal highs）和等低點群（equal lows）。
+ *
+ * 原理：多個 K 線的高點聚集在 ±0.2% 範圍內 → 大量止損訂單堆積在此
+ *   → 機構(Smart Money)必然拉升價格掃盪這些止損後再反向
+ *   → 做多止盈目標 = 最近等高點群（liqHigh）
+ *   → 做空止盈目標 = 最近等低點群（liqLow）
+ *
+ * 最少需要 2 根K線在同一區間才算有效流動性池。
+ */
+function calcLiquidityPools(
+  highs: number[], lows: number[], currentClose: number,
+  lookback = 50, threshold = 0.002,
+): { liqHigh: number; liqLow: number } {
+  const n     = highs.length;
+  const start = Math.max(0, n - lookback);
+
+  // 聚類算法：把在 threshold 內的 highs 歸入同一桶
+  const highBuckets: number[][] = [];
+  for (let i = start; i < n; i++) {
+    let placed = false;
+    for (const b of highBuckets) {
+      if (b[0] > 0 && Math.abs(highs[i] - b[0]) / b[0] <= threshold) {
+        b.push(highs[i]); placed = true; break;
+      }
+    }
+    if (!placed) highBuckets.push([highs[i]]);
+  }
+
+  const lowBuckets: number[][] = [];
+  for (let i = start; i < n; i++) {
+    let placed = false;
+    for (const b of lowBuckets) {
+      if (b[0] > 0 && Math.abs(lows[i] - b[0]) / b[0] <= threshold) {
+        b.push(lows[i]); placed = true; break;
+      }
+    }
+    if (!placed) lowBuckets.push([lows[i]]);
+  }
+
+  // 最近的有效高點流動性池（≥2根，且在當前價格之上）
+  const highPools = highBuckets
+    .filter(b => b.length >= 2)
+    .map(b => b.reduce((s, v) => s + v, 0) / b.length)
+    .filter(v => v > currentClose)
+    .sort((a, b) => a - b);   // 升序：最近的在前
+
+  // 最近的有效低點流動性池（≥2根，且在當前價格之下）
+  const lowPools = lowBuckets
+    .filter(b => b.length >= 2)
+    .map(b => b.reduce((s, v) => s + v, 0) / b.length)
+    .filter(v => v < currentClose)
+    .sort((a, b) => b - a);   // 降序：最近的在前
+
+  return {
+    liqHigh: highPools[0] ?? 0,
+    liqLow:  lowPools[0]  ?? 0,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  主入口（带 LRU 缓存）
 // ═══════════════════════════════════════════════════════════════
 
@@ -509,6 +624,10 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
   const adx      = calculateADXLast(highs, lows, closes, 14);
   const atr14    = calcATR14(highs, lows, closes);
   const swings   = calcSwingLevels(highs, lows);
+  const opens    = data.map(d => d.open);
+  const obs      = calcOrderBlocks(opens, highs, lows, closes);
+  const curClose = closes[n] ?? 0;
+  const pools    = calcLiquidityPools(highs, lows, curClose);
 
   const result: TechnicalIndicators = {
     ma5:  ma5Arr[n]  || 0, ma10: ma10Arr[n] || 0,
@@ -529,6 +648,8 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
     adx: adx.adx, diPlus: adx.diPlus, diMinus: adx.diMinus,
     atr14,
     ...swings,
+    ...obs,
+    ...pools,
   };
 
   cacheSet(key, result);
@@ -546,6 +667,8 @@ function emptyIndicators(): TechnicalIndicators {
     poc: 0, valueAreaHigh: 0, valueAreaLow: 0,
     adx: 0, diPlus: 0, diMinus: 0,
     atr14: 0, swingHigh: 0, swingLow: 0, prevSwingHigh: 0, prevSwingLow: 0,
+    bullOBHigh: 0, bullOBLow: 0, bearOBHigh: 0, bearOBLow: 0,
+    liqHigh: 0, liqLow: 0,
   };
 }
 

@@ -53,6 +53,8 @@ function makeReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
       diPlus: 24, diMinus: 18,
       rsiBullDiv: false, rsiBearDiv: false,
       atr14: 0, swingHigh: 0, swingLow: 0, prevSwingHigh: 0, prevSwingLow: 0,
+      bullOBHigh: 0, bullOBLow: 0, bearOBHigh: 0, bearOBLow: 0,
+      liqHigh: 0, liqLow: 0,
     },
     buySignal: {
       signal: true,

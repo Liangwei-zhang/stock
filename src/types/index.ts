@@ -67,6 +67,14 @@ export interface TechnicalIndicators {
   swingLow: number;      // 最近一個確認波段底（3 根低點）
   prevSwingHigh: number; // 前一個波段頂（斐波那契擴展起點）
   prevSwingLow: number;  // 前一個波段底（斐波那契擴展起點）
+
+  // ── Smart Money Concepts（機構訂單流）──
+  bullOBHigh: number;   // 看漲訂單塊頂邊（機構做多區上緣）
+  bullOBLow: number;    // 看漲訂單塊底邊（多頭失效點：跌破即出場）
+  bearOBHigh: number;   // 看跌訂單塊頂邊（空頭失效點：突破即出場）
+  bearOBLow: number;    // 看跌訂單塊底邊（機構做空區下緣）
+  liqHigh: number;      // 流動性聚集高點（等高線群，做多止盈磁鐵）
+  liqLow: number;       // 流動性聚集低點（等低線群，做空止盈磁鐵）
 }
 
 export interface SignalResult {
