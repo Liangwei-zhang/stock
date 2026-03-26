@@ -10,6 +10,7 @@
  * 安装：  npm install better-sqlite3 @types/better-sqlite3
  */
 
+import 'dotenv/config';
 import express from 'express';
 import path    from 'path';
 import { existsSync, mkdirSync } from 'fs';
