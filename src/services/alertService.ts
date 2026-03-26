@@ -354,12 +354,18 @@ class AlertService {
 
     // Send to Telegram via server（服務端統一發送，避免 CORS，Token 不暴露於前端）
     const fmt = (v: number) => `$${v.toFixed(v >= 100 ? 2 : 4)}`;
+    // 買入/底部：高值 = 止盈目標；賣出/頂部：高值 = 風控點，低值 = 目標位
+    const isLongAlert = type === 'buy' || type === 'bottom';
+    const upperVal   = isLongAlert ? alert.takeProfit : alert.stopLoss;
+    const lowerVal   = isLongAlert ? alert.stopLoss   : alert.takeProfit;
+    const upperLabel = isLongAlert ? '🎯 止盈' : '⚠️ 風控';
+    const lowerLabel = isLongAlert ? '🛡️ 止損' : '🎯 目標';
     const tgMsg =
       `🚸 *股票預警*\n\n` +
       `${icons[type]} *${analysis.symbol}* ${typeLabel[type]}信號\n` +
       `等級：${lvLabel[signal.level]}  |  價格：${fmt(analysis.price)}  |  評分：${signal.score}分\n` +
-      (alert.takeProfit ? `🎯 止盈：${fmt(alert.takeProfit)}` : '') +
-      (alert.stopLoss   ? `  🛡️ 止損：${fmt(alert.stopLoss)}` : '') +
+      (upperVal ? `${upperLabel}：${fmt(upperVal)}` : '') +
+      (lowerVal ? `  ${lowerLabel}：${fmt(lowerVal)}` : '') +
       (alert.takeProfit && alert.stopLoss
         ? `  \`R:R ${ ((Math.abs(alert.takeProfit - analysis.price)) / Math.abs(alert.stopLoss - analysis.price)).toFixed(1) }:1\`\n`
         : '\n') +
