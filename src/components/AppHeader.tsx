@@ -75,6 +75,9 @@ export const AppHeader: React.FC<Props> = ({
             className={atActive ? 'auto-trade-active' : ''}
             style={{
               fontSize: 11,
+              height: 22,
+              paddingBlock: 0,
+              paddingInline: 8,
               background: atActive ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
               borderColor: atActive ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)',
               color: atActive ? '#4ade80' : '#8b949e',
