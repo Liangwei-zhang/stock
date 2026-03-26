@@ -161,12 +161,13 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
           <div>
             <Row gutter={10} align="middle" style={{ marginBottom: 12 }}>
               <Col span={5}>
-                <Select size="small" style={{ width: '100%' }} placeholder="选择标的" value={undefined}
+                <Select<string> size="small" style={{ width: '100%' }} placeholder="选择标的" value={undefined}
                   options={watchlistItems.map(w => ({
                     label: `${w.symbol} $${fmtPrice(stocks.find(s => s.stock.symbol === w.symbol)?.stock.price ?? 0)}`,
                     value: w.symbol,
                   }))}
                   onChange={async (sym) => {
+                    if (!sym) return;
                     const price = stocks.find(s => s.stock.symbol === sym)?.stock.price ?? 0;
                     if (!price) return message.error('无法获取价格');
                     const res = await tradingSimulator.executeTrade({ symbol: sym, type: 'buy', price, reason: '手动买入', confidence: 100 }, 0, 'manual');

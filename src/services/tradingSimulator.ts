@@ -31,7 +31,7 @@ export interface Trade {
   date:        number;
   pnl?:        number;
   pnlPercent?: number;
-  exitReason?: 'signal' | 'stop_loss' | 'take_profit' | 'manual';
+  exitReason?: 'signal' | 'stop_loss' | 'take_profit' | 'manual' | 'timeout';
 }
 
 export interface Account {

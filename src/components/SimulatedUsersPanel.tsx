@@ -310,7 +310,6 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
         title={`${settingUser.user.emoji} ${settingUser.user.name} — 設置`}
         open={!!settingUser}
         onCancel={() => setSettingUser(null)}
-        width={560}
         onOk={() => {
           const vals = form.getFieldsValue();
           // 先更新策略
@@ -359,7 +358,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
         }}>
           <Divider orientation="left" plain style={{ fontSize: 12 }}>賬戶設置</Divider>
           <Form.Item label="初始資金" name="initBalance" help="修改後點確定會提示重置賬戶">
-            <InputNumber
+            <InputNumber<number>
               style={{ width: '100%' }}
               min={1000}
               step={10000}

@@ -48,14 +48,17 @@ function genCandlesNear(n: number, targetPrice: number) {
 
 function makeIndicators(overrides: Record<string, number> = {}) {
   return {
-    ema9: 100, ema21: 98, ema50: 95, ma20: 99,
-    rsi6: 50, rsi9: 50, rsi14: 50,
+    ma5: 101, ma10: 100, ma20: 99, ma60: 97,
+    ema9: 100, ema21: 98,
+    kdjK: 50, kdjD: 49, kdjJ: 52,
+    rsi6: 50, rsi9: 50, rsi12: 50, rsi14: 50, rsi24: 50,
     adx: 25,
     macdDif: 0, macdDea: 0, macdHistogram: 0,
     bollUp: 0, bollMb: 100, bollDn: 0,
     bollWidth: 0.02,
+    bollSqueezing: false,
     valueAreaHigh: 0, valueAreaLow: 0, poc: 100,
-    atr: 1, atrPercent: 1,
+    diPlus: 24, diMinus: 18,
     rsiBullDiv: false, rsiBearDiv: false,
     ...overrides,
   };

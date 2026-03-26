@@ -8,8 +8,11 @@
  *  4. Sharpe Ratio / Calmar Ratio 风险调整收益
  */
 
+import type { IStrategyPlugin } from '../core/types';
+import { pluginRegistry } from '../core/plugin-registry';
 import { Trade } from './tradingSimulator';
 import { StockData } from '../types';
+import { calculateATR } from '../utils/fvg';
 import { predictTopBottom, setPredictionSymbol } from '../utils/prediction';
 import { detectBuySignal, detectSellSignal } from '../utils/signals';
 
@@ -54,6 +57,72 @@ export interface BacktestResult {
   signalStats:  BacktestSignalStats;
   tradeStats?:  TradeStats; // 若模拟了交易才填充
   summary:      string;
+}
+
+export interface PluginBacktestOptions extends BacktestOptions {
+  minSignalScore?:    number;   // 只统计达到该分数的买卖信号，默认 55（中等级别）
+  includeSignals?:    boolean;  // 是否统计 buy/sell 信号，默认 true
+  includePredictions?: boolean; // 是否统计 top/bottom 预测，默认 true
+}
+
+export interface PluginSignalStats {
+  count:         number;
+  winningCount:  number;
+  winRate:       number;
+  avgReturn:     number;
+  highConfidence:number;
+}
+
+export interface PluginBacktestStats {
+  totalSignals:    number;
+  winningSignals:  number;
+  winRate:         number;
+  avgReturn:       number;
+  highConfidence:  number;
+  byType: {
+    buy:    PluginSignalStats;
+    sell:   PluginSignalStats;
+    top:    PluginSignalStats;
+    bottom: PluginSignalStats;
+  };
+}
+
+export interface PluginBacktestResult {
+  pluginId:    string;
+  pluginName:  string;
+  symbol:      string;
+  period:      string;
+  totalBars:   number;
+  stats:       PluginBacktestStats;
+  summary:     string;
+}
+
+export interface PluginTradeBacktestOptions extends BacktestOptions {
+  initialBalance?:   number;
+  positionPct?:      number;
+  feeRate?:          number;
+  stopMultiplier?:   number;
+  profitMultiplier?: number;
+  maxHoldBars?:      number;
+  minBuyScore?:      number;
+  minSellScore?:     number;
+  minPredProb?:      number;
+  allowShort?:       boolean;
+  includePredictions?: boolean;
+}
+
+export interface PluginTradeBacktestResult {
+  pluginId:        string;
+  pluginName:      string;
+  symbol:          string;
+  period:          string;
+  totalBars:       number;
+  trades:          Trade[];
+  tradeStats:      TradeStats | null;
+  finalBalance:    number;
+  equityValue:     number;
+  totalReturnPct:  number;
+  summary:         string;
 }
 
 // ─── 实盘交易统计 ────────────────────────────────────────────────────────────
@@ -281,6 +350,457 @@ export function runBacktest(
   };
 }
 
+// ─── 插件级回测（按插件比较胜率） ───────────────────────────────────────────
+
+type PluginSignalType = 'buy' | 'sell' | 'top' | 'bottom';
+
+interface PluginSignalAccumulator {
+  count: number;
+  wins: number;
+  totalReturn: number;
+  highConfidence: number;
+}
+
+function emptyPluginAccumulator(): PluginSignalAccumulator {
+  return { count: 0, wins: 0, totalReturn: 0, highConfidence: 0 };
+}
+
+function toPluginSignalStats(acc: PluginSignalAccumulator): PluginSignalStats {
+  return {
+    count: acc.count,
+    winningCount: acc.wins,
+    winRate: acc.count > 0 ? acc.wins / acc.count : 0,
+    avgReturn: acc.count > 0 ? acc.totalReturn / acc.count : 0,
+    highConfidence: acc.highConfidence,
+  };
+}
+
+function pushPluginSignal(
+  acc: PluginSignalAccumulator,
+  orientedReturn: number,
+  highConfidence: boolean,
+): void {
+  acc.count++;
+  acc.totalReturn += orientedReturn;
+  if (orientedReturn > 0) acc.wins++;
+  if (highConfidence) acc.highConfidence++;
+}
+
+export function runPluginBacktest(
+  plugin: IStrategyPlugin,
+  symbol: string,
+  data: StockData[],
+  options: PluginBacktestOptions = {},
+): PluginBacktestResult {
+  const {
+    minConfidence = 0.65,
+    lookbackBars = 80,
+    holdBars = 5,
+    minSignalScore = 55,
+    includeSignals = true,
+    includePredictions = true,
+  } = options;
+
+  if (data.length < lookbackBars + holdBars + 10) {
+    return {
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      symbol,
+      period: `${data.length} bars`,
+      totalBars: data.length,
+      stats: {
+        totalSignals: 0,
+        winningSignals: 0,
+        winRate: 0,
+        avgReturn: 0,
+        highConfidence: 0,
+        byType: {
+          buy: emptyPluginSignalStats(),
+          sell: emptyPluginSignalStats(),
+          top: emptyPluginSignalStats(),
+          bottom: emptyPluginSignalStats(),
+        },
+      },
+      summary: `插件 ${plugin.name}：數據不足，無法回測（需至少 ${lookbackBars + holdBars + 10} 根 K 線）`,
+    };
+  }
+
+  const buckets: Record<PluginSignalType, PluginSignalAccumulator> = {
+    buy: emptyPluginAccumulator(),
+    sell: emptyPluginAccumulator(),
+    top: emptyPluginAccumulator(),
+    bottom: emptyPluginAccumulator(),
+  };
+
+  for (let i = lookbackBars; i < data.length - holdBars; i++) {
+    const window = data.slice(0, i + 1);
+    const cur = data[i];
+    const futureClose = data[i + holdBars].close;
+    const rawReturn = (futureClose - cur.close) / cur.close;
+
+    let result;
+    try {
+      result = plugin.analyze(window, symbol);
+    } catch {
+      continue;
+    }
+
+    if (!result) continue;
+
+    if (includeSignals && result.buySignal.signal && result.buySignal.score >= minSignalScore) {
+      pushPluginSignal(buckets.buy, rawReturn, result.buySignal.score >= 75);
+    }
+    if (includeSignals && result.sellSignal.signal && result.sellSignal.score >= minSignalScore) {
+      pushPluginSignal(buckets.sell, -rawReturn, result.sellSignal.score >= 75);
+    }
+
+    if (includePredictions && result.prediction.type === 'bottom' && result.prediction.probability >= minConfidence) {
+      pushPluginSignal(buckets.bottom, rawReturn, result.prediction.probability >= 0.8);
+    }
+    if (includePredictions && result.prediction.type === 'top' && result.prediction.probability >= minConfidence) {
+      pushPluginSignal(buckets.top, -rawReturn, result.prediction.probability >= 0.8);
+    }
+  }
+
+  const byType = {
+    buy: toPluginSignalStats(buckets.buy),
+    sell: toPluginSignalStats(buckets.sell),
+    top: toPluginSignalStats(buckets.top),
+    bottom: toPluginSignalStats(buckets.bottom),
+  };
+
+  const totalSignals = byType.buy.count + byType.sell.count + byType.top.count + byType.bottom.count;
+  const winningSignals = byType.buy.winningCount + byType.sell.winningCount + byType.top.winningCount + byType.bottom.winningCount;
+  const totalReturn =
+    buckets.buy.totalReturn +
+    buckets.sell.totalReturn +
+    buckets.top.totalReturn +
+    buckets.bottom.totalReturn;
+  const highConfidence = byType.buy.highConfidence + byType.sell.highConfidence + byType.top.highConfidence + byType.bottom.highConfidence;
+
+  const stats: PluginBacktestStats = {
+    totalSignals,
+    winningSignals,
+    winRate: totalSignals > 0 ? winningSignals / totalSignals : 0,
+    avgReturn: totalSignals > 0 ? totalReturn / totalSignals : 0,
+    highConfidence,
+    byType,
+  };
+
+  const signalParts = [
+    byType.buy.count > 0 ? `買入 ${byType.buy.count}` : '',
+    byType.sell.count > 0 ? `賣出 ${byType.sell.count}` : '',
+    byType.top.count > 0 ? `頂部 ${byType.top.count}` : '',
+    byType.bottom.count > 0 ? `底部 ${byType.bottom.count}` : '',
+  ].filter(Boolean).join(' / ');
+
+  return {
+    pluginId: plugin.id,
+    pluginName: plugin.name,
+    symbol,
+    period: `${data.length} bars`,
+    totalBars: data.length,
+    stats,
+    summary: [
+      `${plugin.name} 回測完成`,
+      `總信號 ${stats.totalSignals}，勝率 ${(stats.winRate * 100).toFixed(1)}%`,
+      `平均方向收益 ${(stats.avgReturn * 100).toFixed(2)}% / ${holdBars} 根 K 線`,
+      signalParts ? `信號分佈：${signalParts}` : '',
+      stats.highConfidence > 0 ? `高置信度信號 ${stats.highConfidence} 次` : '',
+    ].filter(Boolean).join('\n'),
+  };
+}
+
+export function rankPluginsByBacktest(
+  symbol: string,
+  data: StockData[],
+  options: PluginBacktestOptions = {},
+  plugins: IStrategyPlugin[] = pluginRegistry.list(),
+): PluginBacktestResult[] {
+  return plugins
+    .map(plugin => runPluginBacktest(plugin, symbol, data, options))
+    .sort((a, b) => {
+      if (b.stats.winRate !== a.stats.winRate) return b.stats.winRate - a.stats.winRate;
+      if (b.stats.avgReturn !== a.stats.avgReturn) return b.stats.avgReturn - a.stats.avgReturn;
+      return b.stats.totalSignals - a.stats.totalSignals;
+    });
+}
+
+function emptyPluginSignalStats(): PluginSignalStats {
+  return {
+    count: 0,
+    winningCount: 0,
+    winRate: 0,
+    avgReturn: 0,
+    highConfidence: 0,
+  };
+}
+
+// ─── 插件级真实交易回测（胜率 / 盈亏比 / Sharpe / 回撤）────────────────────
+
+interface SimulatedPosition {
+  side: 'long' | 'short';
+  quantity: number;
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  openedAtBar: number;
+}
+
+function closeSimulatedPosition(
+  position: SimulatedPosition,
+  exitPrice: number,
+  exitReason: Trade['exitReason'],
+  feeRate: number,
+  tradeId: number,
+  timestamp: number,
+): { trade: Trade; balanceDelta: number } {
+  const gross = position.quantity * exitPrice;
+  const fee = gross * feeRate;
+  const signedMove = position.side === 'long'
+    ? exitPrice - position.entryPrice
+    : position.entryPrice - exitPrice;
+  const pnl = signedMove * position.quantity - fee;
+  const pnlPercent = (signedMove / position.entryPrice) * 100;
+
+  return {
+    trade: {
+      id: tradeId,
+      symbol: '',
+      side: 'sell',
+      quantity: position.quantity,
+      price: exitPrice,
+      total: gross,
+      fee,
+      date: timestamp,
+      pnl,
+      pnlPercent,
+      exitReason,
+    },
+    balanceDelta: position.side === 'long'
+      ? gross - fee
+      : position.quantity * position.entryPrice * 0.3 + pnl,
+  };
+}
+
+function getEquity(balance: number, position: SimulatedPosition | null, lastPrice: number): number {
+  if (!position) return balance;
+  if (position.side === 'long') {
+    return balance + position.quantity * lastPrice;
+  }
+  const unrealized = (position.entryPrice - lastPrice) * position.quantity;
+  return balance + position.quantity * position.entryPrice * 0.3 + unrealized;
+}
+
+export function runPluginTradeBacktest(
+  plugin: IStrategyPlugin,
+  symbol: string,
+  data: StockData[],
+  options: PluginTradeBacktestOptions = {},
+): PluginTradeBacktestResult {
+  const {
+    lookbackBars = 80,
+    initialBalance = 100_000,
+    positionPct = 0.1,
+    feeRate = 0.001,
+    stopMultiplier = 2,
+    profitMultiplier = 3,
+    maxHoldBars = 0,
+    minBuyScore = 55,
+    minSellScore = 55,
+    minPredProb = 0.65,
+    allowShort = true,
+    includePredictions = true,
+  } = options;
+
+  if (data.length < lookbackBars + 10) {
+    return {
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      symbol,
+      period: `${data.length} bars`,
+      totalBars: data.length,
+      trades: [],
+      tradeStats: null,
+      finalBalance: initialBalance,
+      equityValue: initialBalance,
+      totalReturnPct: 0,
+      summary: `插件 ${plugin.name}：數據不足，無法做真實交易回測（需至少 ${lookbackBars + 10} 根 K 線）`,
+    };
+  }
+
+  let balance = initialBalance;
+  let nextTradeId = 1;
+  let position: SimulatedPosition | null = null;
+  const trades: Trade[] = [];
+
+  for (let i = lookbackBars; i < data.length; i++) {
+    const window = data.slice(0, i + 1);
+    const bar = data[i];
+    const atr = Math.max(calculateATR(window), bar.close * 0.015);
+
+    let result;
+    try {
+      result = plugin.analyze(window, symbol);
+    } catch {
+      continue;
+    }
+    if (!result) continue;
+
+    if (position) {
+      let exitPrice: number | null = null;
+      let exitReason: Trade['exitReason'] = 'signal';
+
+      if (position.side === 'long') {
+        if (bar.low <= position.stopLoss) {
+          exitPrice = position.stopLoss;
+          exitReason = 'stop_loss';
+        } else if (bar.high >= position.takeProfit) {
+          exitPrice = position.takeProfit;
+          exitReason = 'take_profit';
+        } else if (maxHoldBars > 0 && i - position.openedAtBar >= maxHoldBars) {
+          exitPrice = bar.close;
+          exitReason = 'manual';
+        } else if (
+          (result.sellSignal.signal && result.sellSignal.score >= minSellScore) ||
+          (includePredictions && result.prediction.type === 'top' && result.prediction.probability >= minPredProb)
+        ) {
+          exitPrice = bar.close;
+          exitReason = 'signal';
+        }
+      } else {
+        if (bar.high >= position.stopLoss) {
+          exitPrice = position.stopLoss;
+          exitReason = 'stop_loss';
+        } else if (bar.low <= position.takeProfit) {
+          exitPrice = position.takeProfit;
+          exitReason = 'take_profit';
+        } else if (maxHoldBars > 0 && i - position.openedAtBar >= maxHoldBars) {
+          exitPrice = bar.close;
+          exitReason = 'manual';
+        } else if (
+          (result.buySignal.signal && result.buySignal.score >= minBuyScore) ||
+          (includePredictions && result.prediction.type === 'bottom' && result.prediction.probability >= minPredProb)
+        ) {
+          exitPrice = bar.close;
+          exitReason = 'signal';
+        }
+      }
+
+      if (exitPrice !== null) {
+        const closed = closeSimulatedPosition(position, exitPrice, exitReason, feeRate, nextTradeId++, bar.timestamp);
+        closed.trade.symbol = symbol;
+        trades.push(closed.trade);
+        balance += closed.balanceDelta;
+        position = null;
+      }
+    }
+
+    if (position) continue;
+
+    const wantLong =
+      (result.buySignal.signal && result.buySignal.score >= minBuyScore) ||
+      (includePredictions && result.prediction.type === 'bottom' && result.prediction.probability >= minPredProb);
+    const wantShort = allowShort && (
+      (result.sellSignal.signal && result.sellSignal.score >= minSellScore) ||
+      (includePredictions && result.prediction.type === 'top' && result.prediction.probability >= minPredProb)
+    );
+
+    if (!wantLong && !wantShort) continue;
+
+    const capital = balance * positionPct;
+    if (capital <= 0) continue;
+
+    const quantity = Math.floor((capital / bar.close) * 10_000) / 10_000;
+    if (quantity <= 0) continue;
+
+    const total = quantity * bar.close;
+    const fee = total * feeRate;
+
+    if (wantLong) {
+      if (balance < total + fee) continue;
+      balance -= total + fee;
+      position = {
+        side: 'long',
+        quantity,
+        entryPrice: bar.close,
+        stopLoss: bar.close - atr * stopMultiplier,
+        takeProfit: bar.close + atr * profitMultiplier,
+        openedAtBar: i,
+      };
+    } else if (wantShort) {
+      const margin = total * 0.3 + fee;
+      if (balance < margin) continue;
+      balance -= margin;
+      position = {
+        side: 'short',
+        quantity,
+        entryPrice: bar.close,
+        stopLoss: bar.close + atr * stopMultiplier,
+        takeProfit: bar.close - atr * profitMultiplier,
+        openedAtBar: i,
+      };
+    }
+  }
+
+  if (position) {
+    const lastBar = data[data.length - 1];
+    const closed = closeSimulatedPosition(position, lastBar.close, 'manual', feeRate, nextTradeId++, lastBar.timestamp);
+    closed.trade.symbol = symbol;
+    trades.push(closed.trade);
+    balance += closed.balanceDelta;
+    position = null;
+  }
+
+  const tradeStats = calcTradeStats(trades);
+  const equityValue = getEquity(balance, position, data[data.length - 1].close);
+  const totalReturnPct = ((equityValue - initialBalance) / initialBalance) * 100;
+
+  return {
+    pluginId: plugin.id,
+    pluginName: plugin.name,
+    symbol,
+    period: `${data.length} bars`,
+    totalBars: data.length,
+    trades,
+    tradeStats,
+    finalBalance: balance,
+    equityValue,
+    totalReturnPct,
+    summary: tradeStats
+      ? [
+          `${plugin.name} 真實交易回測完成`,
+          `交易 ${tradeStats.totalTrades} 筆，勝率 ${(tradeStats.winRate * 100).toFixed(1)}%`,
+          `總盈虧 ${tradeStats.totalPnL >= 0 ? '+' : ''}$${tradeStats.totalPnL.toFixed(2)}`,
+          `盈虧比 ${tradeStats.profitFactor.toFixed(2)}，Sharpe ${tradeStats.sharpeRatio.toFixed(2)}`,
+          `最大回撤 ${(tradeStats.maxDrawdown * 100).toFixed(1)}%，資產變化 ${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`,
+        ].join('\n')
+      : `${plugin.name} 真實交易回測未產生任何平倉交易`,
+  };
+}
+
+export function rankPluginsByTradeBacktest(
+  symbol: string,
+  data: StockData[],
+  options: PluginTradeBacktestOptions = {},
+  plugins: IStrategyPlugin[] = pluginRegistry.list(),
+): PluginTradeBacktestResult[] {
+  return plugins
+    .map(plugin => runPluginTradeBacktest(plugin, symbol, data, options))
+    .sort((a, b) => {
+      const aStats = a.tradeStats;
+      const bStats = b.tradeStats;
+      if (!aStats && !bStats) return 0;
+      if (!aStats) return 1;
+      if (!bStats) return -1;
+      if (bStats.totalPnL !== aStats.totalPnL) return bStats.totalPnL - aStats.totalPnL;
+      if (bStats.sharpeRatio !== aStats.sharpeRatio) return bStats.sharpeRatio - aStats.sharpeRatio;
+      if (bStats.winRate !== aStats.winRate) return bStats.winRate - aStats.winRate;
+      if (bStats.profitFactor !== aStats.profitFactor) return bStats.profitFactor - aStats.profitFactor;
+      return bStats.totalTrades - aStats.totalTrades;
+    });
+}
+
 // ─── 格式化输出（供 UI 展示） ─────────────────────────────────────────────────
 
 export function formatTradeStats(stats: TradeStats): Record<string, string> {
@@ -297,5 +817,18 @@ export function formatTradeStats(stats: TradeStats): Record<string, string> {
     'Calmar Ratio':   stats.calmarRatio.toFixed(2),
     '止损平仓':       `${stats.byExitReason.stop_loss.count} 次`,
     '止盈平仓':       `${stats.byExitReason.take_profit.count} 次`,
+  };
+}
+
+export function formatPluginBacktestStats(stats: PluginBacktestStats): Record<string, string> {
+  return {
+    '總信號數': `${stats.totalSignals}`,
+    '勝率': `${(stats.winRate * 100).toFixed(1)}%`,
+    '平均方向收益': `${(stats.avgReturn * 100).toFixed(2)}%`,
+    '高置信度信號': `${stats.highConfidence}`,
+    '買入勝率': `${(stats.byType.buy.winRate * 100).toFixed(1)}% (${stats.byType.buy.count})`,
+    '賣出勝率': `${(stats.byType.sell.winRate * 100).toFixed(1)}% (${stats.byType.sell.count})`,
+    '頂部預測勝率': `${(stats.byType.top.winRate * 100).toFixed(1)}% (${stats.byType.top.count})`,
+    '底部預測勝率': `${(stats.byType.bottom.winRate * 100).toFixed(1)}% (${stats.byType.bottom.count})`,
   };
 }

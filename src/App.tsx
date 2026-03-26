@@ -10,6 +10,7 @@ import { useChart }           from './hooks/useChart';
 import { AppHeader }          from './components/AppHeader';
 import { WatchlistSidebar }   from './components/WatchlistSidebar';
 import { AnalysisGrid }       from './components/AnalysisGrid';
+import { AlgorithmRankingPanel } from './components/AlgorithmRankingPanel';
 import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
@@ -176,6 +177,12 @@ const App: React.FC = () => {
                   <AnalysisGrid
                     analysis={analysis}
                     selectedStock={selectedStock}
+                    onRefresh={updateUI}
+                  />
+
+                  <AlgorithmRankingPanel
+                    selectedStock={selectedStock}
+                    refreshKey={refreshKey}
                     onRefresh={updateUI}
                   />
                 </>

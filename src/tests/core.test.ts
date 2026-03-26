@@ -16,6 +16,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fmtPrice } from '../utils/format';
 
+function makeLocalStorageMock() {
+  const store: Record<string, string> = {};
+  return {
+    _store: store,
+    getItem(k: string) { return store[k] ?? null; },
+    setItem(k: string, v: string) { store[k] = v; },
+    removeItem(k: string) { delete store[k]; },
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** 生成 N 根 K 线，价格从 base 开始做正弦波 */
@@ -352,12 +362,7 @@ describe('tradingSimulator — account management', () => {
 
   beforeEach(async () => {
     // Reset localStorage mock and create fresh instance
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const mod = await import('../services/tradingSimulator');
     simulator = mod.tradingSimulator;
@@ -526,6 +531,231 @@ describe('backtestStats.ts — calcTradeStats', () => {
     expect(stats.byExitReason.stop_loss.count).toBe(2);
     expect(stats.byExitReason.take_profit.count).toBe(1);
   });
+
+  it('runPluginBacktest computes plugin win rate for directional signals', async () => {
+    const { runPluginBacktest } = await import('../services/backtestStats');
+
+    const data = Array.from({ length: 25 }, (_, i) => ({
+      symbol: 'TEST',
+      name: 'Test',
+      price: 100 + i,
+      close: 100 + i,
+      open: 99 + i,
+      high: 101 + i,
+      low: 98 + i,
+      volume: 1000 + i,
+      change: 1,
+      changePercent: 1,
+      timestamp: i * 60_000,
+      source: 'mock' as const,
+    }));
+
+    const plugin = {
+      id: 'always-buy',
+      name: 'Always Buy',
+      version: '1.0.0',
+      description: 'test',
+      author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST',
+          price,
+          indicators: {} as any,
+          buySignal: { signal: true, level: 'high' as const, score: 80, reasons: ['trend up'] },
+          sellSignal: { signal: false, level: null, score: 0, reasons: [] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'always-buy',
+          computedAt: Date.now(),
+          metadata: {},
+        };
+      },
+    };
+
+    const result = runPluginBacktest(plugin as any, 'TEST', data, {
+      lookbackBars: 10,
+      holdBars: 2,
+      includePredictions: false,
+      minSignalScore: 55,
+    });
+
+    expect(result.stats.totalSignals).toBe(13);
+    expect(result.stats.winRate).toBe(1);
+    expect(result.stats.byType.buy.count).toBe(13);
+    expect(result.stats.byType.buy.winRate).toBe(1);
+  });
+
+  it('rankPluginsByBacktest sorts plugins by win rate then avg return', async () => {
+    const { rankPluginsByBacktest } = await import('../services/backtestStats');
+
+    const data = Array.from({ length: 30 }, (_, i) => ({
+      symbol: 'TEST',
+      name: 'Test',
+      price: 100 + i,
+      close: 100 + i,
+      open: 99 + i,
+      high: 101 + i,
+      low: 98 + i,
+      volume: 1000 + i,
+      change: 1,
+      changePercent: 1,
+      timestamp: i * 60_000,
+      source: 'mock' as const,
+    }));
+
+    const buyPlugin = {
+      id: 'buy', name: 'Buy', version: '1.0.0', description: 'test', author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST', price, indicators: {} as any,
+          buySignal: { signal: true, level: 'high' as const, score: 85, reasons: ['buy'] },
+          sellSignal: { signal: false, level: null, score: 0, reasons: [] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'buy', computedAt: Date.now(), metadata: {},
+        };
+      },
+    };
+
+    const sellPlugin = {
+      id: 'sell', name: 'Sell', version: '1.0.0', description: 'test', author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST', price, indicators: {} as any,
+          buySignal: { signal: false, level: null, score: 0, reasons: [] },
+          sellSignal: { signal: true, level: 'high' as const, score: 85, reasons: ['sell'] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'sell', computedAt: Date.now(), metadata: {},
+        };
+      },
+    };
+
+    const ranked = rankPluginsByBacktest('TEST', data, {
+      lookbackBars: 10,
+      holdBars: 2,
+      includePredictions: false,
+      minSignalScore: 55,
+    }, [sellPlugin as any, buyPlugin as any]);
+
+    expect(ranked).toHaveLength(2);
+    expect(ranked[0].pluginId).toBe('buy');
+    expect(ranked[0].stats.winRate).toBeGreaterThan(ranked[1].stats.winRate);
+  });
+
+  it('runPluginTradeBacktest produces closed-trade statistics', async () => {
+    const { runPluginTradeBacktest } = await import('../services/backtestStats');
+
+    const data = Array.from({ length: 40 }, (_, i) => ({
+      symbol: 'TEST',
+      name: 'Test',
+      price: 100 + i,
+      close: 100 + i,
+      open: 99 + i,
+      high: 101 + i,
+      low: 98 + i,
+      volume: 1000 + i,
+      change: 1,
+      changePercent: 1,
+      timestamp: i * 60_000,
+      source: 'mock' as const,
+    }));
+
+    const plugin = {
+      id: 'trade-buy',
+      name: 'Trade Buy',
+      version: '1.0.0',
+      description: 'test',
+      author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST',
+          price,
+          indicators: {} as any,
+          buySignal: { signal: true, level: 'high' as const, score: 85, reasons: ['buy'] },
+          sellSignal: { signal: false, level: null, score: 0, reasons: [] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'trade-buy',
+          computedAt: Date.now(),
+          metadata: {},
+        };
+      },
+    };
+
+    const result = runPluginTradeBacktest(plugin as any, 'TEST', data, {
+      lookbackBars: 10,
+      positionPct: 0.2,
+      stopMultiplier: 1,
+      profitMultiplier: 2,
+      allowShort: false,
+      includePredictions: false,
+    });
+
+    expect(result.tradeStats).not.toBeNull();
+    expect(result.tradeStats!.totalTrades).toBeGreaterThan(0);
+    expect(result.tradeStats!.winRate).toBeGreaterThan(0);
+    expect(result.totalReturnPct).toBeGreaterThan(0);
+  });
+
+  it('rankPluginsByTradeBacktest sorts by trade performance', async () => {
+    const { rankPluginsByTradeBacktest } = await import('../services/backtestStats');
+
+    const data = Array.from({ length: 40 }, (_, i) => ({
+      symbol: 'TEST',
+      name: 'Test',
+      price: 100 + i,
+      close: 100 + i,
+      open: 99 + i,
+      high: 101 + i,
+      low: 98 + i,
+      volume: 1000 + i,
+      change: 1,
+      changePercent: 1,
+      timestamp: i * 60_000,
+      source: 'mock' as const,
+    }));
+
+    const buyPlugin = {
+      id: 'trade-buy', name: 'Trade Buy', version: '1.0.0', description: 'test', author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST', price, indicators: {} as any,
+          buySignal: { signal: true, level: 'high' as const, score: 85, reasons: ['buy'] },
+          sellSignal: { signal: false, level: null, score: 0, reasons: [] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'trade-buy', computedAt: Date.now(), metadata: {},
+        };
+      },
+    };
+
+    const shortPlugin = {
+      id: 'trade-short', name: 'Trade Short', version: '1.0.0', description: 'test', author: 'test',
+      analyze(window: typeof data) {
+        const price = window[window.length - 1].close;
+        return {
+          symbol: 'TEST', price, indicators: {} as any,
+          buySignal: { signal: false, level: null, score: 0, reasons: [] },
+          sellSignal: { signal: true, level: 'high' as const, score: 85, reasons: ['sell'] },
+          prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: 'n/a' },
+          pluginId: 'trade-short', computedAt: Date.now(), metadata: {},
+        };
+      },
+    };
+
+    const ranked = rankPluginsByTradeBacktest('TEST', data, {
+      lookbackBars: 10,
+      positionPct: 0.2,
+      stopMultiplier: 1,
+      profitMultiplier: 2,
+      includePredictions: false,
+    }, [shortPlugin as any, buyPlugin as any]);
+
+    expect(ranked).toHaveLength(2);
+    expect(ranked[0].pluginId).toBe('trade-buy');
+    expect(ranked[0].tradeStats?.totalPnL ?? 0).toBeGreaterThan(ranked[1].tradeStats?.totalPnL ?? 0);
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -534,12 +764,7 @@ describe('backtestStats.ts — calcTradeStats', () => {
 
 describe('autoTradeService — configuration', () => {
   it('starts disabled by default (fresh localStorage)', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { autoTradeService } = await import('../services/autoTradeService');
     expect(autoTradeService.getConfig().enabled).toBe(false);
@@ -625,7 +850,7 @@ describe('autoTradeService — configuration', () => {
     const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setEnabled(true);
     // BTC disabled
-    const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high', score: 80, reasons: ['test'] }, sellSignal: { signal:false, level:null, score:0, reasons:[] }, prediction: { type:'neutral', probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
+    const mockAnalysis = new Map([['BTC', { price: 50000, buySignal: { signal: true, level: 'high' as const, score: 80, reasons: ['test'] }, sellSignal: { signal:false, level:null, score:0, reasons:[] }, prediction: { type:'neutral' as const, probability:0, signals:[], recommendation:'' }, indicators: {} as any, symbol:'BTC' }]]);
     await autoTradeService.onMarketUpdate(mockAnalysis);
     expect(autoTradeService.getExecutions().length).toBe(0); // symbol not enabled
   });
@@ -637,24 +862,14 @@ describe('autoTradeService — configuration', () => {
 
 describe('simulatedUsers — service', () => {
   it('5 default users are loaded', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     expect(simulatedUserService.getStates().length).toBe(5);
   });
 
   it('each user has a unique id', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     const ids = simulatedUserService.getStates().map(s => s.user.id);
@@ -662,12 +877,7 @@ describe('simulatedUsers — service', () => {
   });
 
   it('getRanking sorts by pnlPct descending', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     const ranking = simulatedUserService.getRanking(new Map());
@@ -677,12 +887,7 @@ describe('simulatedUsers — service', () => {
   });
 
   it('setUserSymbols filters onMarketUpdate correctly', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     const firstUser = simulatedUserService.getStates()[0];
@@ -692,12 +897,7 @@ describe('simulatedUsers — service', () => {
   });
 
   it('resetUser clears trades and positions', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     const firstUser = simulatedUserService.getStates()[0];
@@ -708,12 +908,7 @@ describe('simulatedUsers — service', () => {
   });
 
   it('contrarian user strategy has contrarian=true', async () => {
-    vi.stubGlobal('localStorage', {
-      _store: {} as Record<string,string>,
-      getItem(k: string) { return this._store[k] ?? null; },
-      setItem(k: string, v: string) { this._store[k] = v; },
-      removeItem(k: string) { delete this._store[k]; },
-    });
+    vi.stubGlobal('localStorage', makeLocalStorageMock());
     vi.resetModules();
     const { simulatedUserService } = await import('../services/simulatedUsers');
     const contrarian = simulatedUserService.getStates().find(s => s.user.id === 'contrarian_zhou');
