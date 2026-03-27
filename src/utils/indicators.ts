@@ -583,6 +583,200 @@ function calcLiquidityPools(
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  VWAP-20（成交量加權均價）—— 機構最重要的短期錨點
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 20 期典型價 × 成交量加權均價（Volume-Weighted Average Price）。
+ * 機構交易員最常用的參考均線——在 VWAP 上方做多、下方做空；
+ * VWAP 是均值回歸的天然磁鐵，也是多空雙方最核心的動態支撐/阻力。
+ */
+function calcVWAP(data: StockData[], period = 20): number {
+  if (data.length === 0) return 0;
+  const slice = data.length >= period ? data.slice(-period) : data;
+  let pv = 0, vol = 0;
+  for (const d of slice) {
+    const typical = (d.high + d.low + d.close) / 3;
+    const v = d.volume > 0 ? d.volume : 1;
+    pv  += typical * v;
+    vol += v;
+  }
+  return vol > 0 ? pv / vol : 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOS（Break of Structure 結構突破位）
+//  波段頂被向上突破 → 翻轉為支撐；波段底被向下突破 → 翻轉為阻力
+// ═══════════════════════════════════════════════════════════════
+
+function calcBOSLevels(
+  swingHigh: number, swingLow: number,
+  prevSwingHigh: number, prevSwingLow: number,
+  curClose: number,
+): { bosSupport: number; bosResistance: number } {
+  // BOS 支撐（做多參考）：距離入場價不超過 10% 的被突破波段頂
+  let bosSupport = 0;
+  if (swingHigh > 0 && curClose > swingHigh && (curClose - swingHigh) / curClose < 0.10) {
+    bosSupport = swingHigh;
+  } else if (prevSwingHigh > 0 && curClose > prevSwingHigh && (curClose - prevSwingHigh) / curClose < 0.10) {
+    bosSupport = prevSwingHigh;
+  }
+
+  // BOS 阻力（做空參考）：距離入場價不超過 10% 的被突破波段底
+  let bosResistance = 0;
+  if (swingLow > 0 && curClose < swingLow && (swingLow - curClose) / curClose < 0.10) {
+    bosResistance = swingLow;
+  } else if (prevSwingLow > 0 && curClose < prevSwingLow && (prevSwingLow - curClose) / curClose < 0.10) {
+    bosResistance = prevSwingLow;
+  }
+
+  return { bosSupport, bosResistance };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FVG 掃描（公平價值缺口）—— 未填補缺口是最強的 TP/SL 磁鐵
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 掃描最近 lookback 根 K 線，找出最近的未填補 FVG（公平價值缺口）。
+ *
+ * 看漲 FVG（bullish）：bar[i].low > bar[i-2].high → 跳空上漲留缺口（在當前價格下方）
+ *   fvgBullTop = bar[i].low（支撐帶上緣，靠近入場）
+ *   fvgBullBot = bar[i-2].high（支撐帶下緣，跌穿 = 缺口完全填補 = 結構失效）
+ *
+ * 看跌 FVG（bearish）：bar[i].high < bar[i-2].low → 跳空下跌留缺口（在當前價格上方）
+ *   fvgBearTop = bar[i-2].low（阻力帶頂邊，強勢延伸目標）
+ *   fvgBearBot = bar[i].high（阻力帶底邊，保守 TP 入口）
+ *
+ * 評分：越近越新越高（距離權重 0.6 + 新舊權重 0.4）
+ */
+function scanNearestFVGs(
+  data: StockData[], curClose: number, lookback = 40,
+): { fvgBullTop: number; fvgBullBot: number; fvgBearTop: number; fvgBearBot: number } {
+  const n = data.length;
+  let fvgBullTop = 0, fvgBullBot = 0;
+  let fvgBearTop = 0, fvgBearBot = 0;
+  let bestBullScore = -1, bestBearScore = -1;
+
+  for (let i = Math.max(2, n - lookback); i < n; i++) {
+    const h2 = data[i - 2].high;
+    const l2 = data[i - 2].low;
+    const hi = data[i].high;
+    const li = data[i].low;
+
+    // ── 看漲 FVG：bar[i].low > bar[i-2].high ──
+    if (li > h2 && h2 > 0) {
+      const gapPct = (li - h2) / h2;
+      if (gapPct > 0.0005) {
+        const mid     = (li + h2) / 2;
+        const distPct = (curClose - mid) / curClose;  // 正 = FVG 在當前價格下方
+        if (distPct > 0.001 && distPct < 0.08) {
+          const score = (1 - distPct) * 0.6 + (i / n) * 0.4;
+          if (score > bestBullScore) {
+            bestBullScore = score;
+            fvgBullTop = li;   // 看漲 FVG 頂邊（靠近入場，止損保護上緣）
+            fvgBullBot = h2;   // 看漲 FVG 底邊（跌穿 = 失效，SL 置於此下方）
+          }
+        }
+      }
+    }
+
+    // ── 看跌 FVG：bar[i].high < bar[i-2].low ──
+    if (hi < l2 && l2 > 0) {
+      const gapPct = (l2 - hi) / l2;
+      if (gapPct > 0.0005) {
+        const mid     = (l2 + hi) / 2;
+        const distPct = (mid - curClose) / curClose;  // 正 = FVG 在當前價格上方
+        if (distPct > 0.001 && distPct < 0.08) {
+          const score = (1 - distPct) * 0.6 + (i / n) * 0.4;
+          if (score > bestBearScore) {
+            bestBearScore = score;
+            fvgBearTop = l2;   // 看跌 FVG 頂邊（完全填補目標，強勢 TP）
+            fvgBearBot = hi;   // 看跌 FVG 底邊（保守 TP，gap 入口）
+          }
+        }
+      }
+    }
+  }
+
+  return { fvgBullTop, fvgBullBot, fvgBearTop, fvgBearBot };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  多重波段斐波那契共振（Fibonacci Confluence Zones）
+//  取最近 5 組 pivot 高低點，對每對計算關鍵延伸位，
+//  在 0.5% 容差內有 ≥2 個不同波段聚合 → 共振確認
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 從多組波段組合生成斐波那契延伸位，找出共振密度最高的節點。
+ * 共振原理：若三角浪 ABC 和另一個獨立波段的 1.618 延伸都指向同一位置，
+ * 機構算法必然在此設定目標 → 做多止盈或做空止盈的極強目標。
+ */
+function calcFibConfluence(
+  highs: number[], lows: number[], curClose: number, lookback = 80,
+): { fibConvAbove: number; fibConvBelow: number } {
+  const n = highs.length;
+  if (n < 8) return { fibConvAbove: 0, fibConvBelow: 0 };
+
+  const start = Math.max(3, n - lookback);
+  const pHighs: number[] = [];
+  const pLows:  number[] = [];
+
+  // 3-bar pivot 識別（與 calcSwingLevels 相同規則保持一致）
+  for (let i = start; i < n - 3; i++) {
+    let isH = true, isL = true;
+    for (let j = 1; j <= 3; j++) {
+      if (highs[i] <= highs[i - j] || highs[i] <= highs[i + j]) isH = false;
+      if (lows[i]  >= lows[i - j]  || lows[i]  >= lows[i + j]) isL = false;
+    }
+    if (isH) pHighs.push(highs[i]);
+    if (isL) pLows.push(lows[i]);
+  }
+
+  const rHs = pHighs.slice(-5);  // 最近 5 個波段頂
+  const rLs  = pLows.slice(-5);  // 最近 5 個波段底
+  if (rHs.length === 0 || rLs.length === 0) return { fibConvAbove: 0, fibConvBelow: 0 };
+
+  const allLevels: number[] = [];
+  for (const ph of rHs) {
+    for (const pl of rLs) {
+      if (ph <= pl) continue;
+      const d = ph - pl;
+      // 向上延伸（做多止盈目標）
+      allLevels.push(ph + d * 0.272);   // 1.272 ext
+      allLevels.push(ph + d * 0.618);   // 1.618 ext ← 黃金比例，最重要
+      allLevels.push(ph + d * 1.000);   // 2.000 ext
+      allLevels.push(ph + d * 1.618);   // 2.618 ext
+      // 向下延伸（做空止盈目標）
+      allLevels.push(pl - d * 0.272);
+      allLevels.push(pl - d * 0.618);
+      allLevels.push(pl - d * 1.000);
+      allLevels.push(pl - d * 1.618);
+      // 回撤位（結構支撐/阻力共振）
+      allLevels.push(ph - d * 0.618);   // 黃金口袋
+      allLevels.push(ph - d * 0.786);   // OTE 區域
+    }
+  }
+
+  const tol   = curClose * 0.005;   // 0.5% 容差桶
+  const above = allLevels.filter(l => l > curClose * 1.008 && l < curClose * 1.20);
+  const below = allLevels.filter(l => l < curClose * 0.992 && l > curClose * 0.80);
+
+  const densest = (arr: number[]): number => {
+    if (arr.length < 2) return 0;
+    let best = 0, bestCnt = 0;
+    for (const l of arr) {
+      const cnt = arr.filter(x => Math.abs(x - l) <= tol).length;
+      if (cnt > bestCnt) { bestCnt = cnt; best = l; }
+    }
+    return bestCnt >= 2 ? best : 0;
+  };
+
+  return { fibConvAbove: densest(above), fibConvBelow: densest(below) };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  主入口（带 LRU 缓存）
 // ═══════════════════════════════════════════════════════════════
 
@@ -628,6 +822,10 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
   const obs      = calcOrderBlocks(opens, highs, lows, closes);
   const curClose = closes[n] ?? 0;
   const pools    = calcLiquidityPools(highs, lows, curClose);
+  const vwap20   = calcVWAP(data, 20);
+  const bos      = calcBOSLevels(swings.swingHigh, swings.swingLow, swings.prevSwingHigh, swings.prevSwingLow, curClose);
+  const fvgs     = scanNearestFVGs(data, curClose);
+  const fibConv  = calcFibConfluence(highs, lows, curClose);
 
   const result: TechnicalIndicators = {
     ma5:  ma5Arr[n]  || 0, ma10: ma10Arr[n] || 0,
@@ -650,6 +848,10 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
     ...swings,
     ...obs,
     ...pools,
+    vwap20,
+    ...bos,
+    ...fvgs,
+    ...fibConv,
   };
 
   cacheSet(key, result);
@@ -669,6 +871,9 @@ function emptyIndicators(): TechnicalIndicators {
     atr14: 0, swingHigh: 0, swingLow: 0, prevSwingHigh: 0, prevSwingLow: 0,
     bullOBHigh: 0, bullOBLow: 0, bearOBHigh: 0, bearOBLow: 0,
     liqHigh: 0, liqLow: 0,
+    vwap20: 0, bosSupport: 0, bosResistance: 0,
+    fvgBullTop: 0, fvgBullBot: 0, fvgBearTop: 0, fvgBearBot: 0,
+    fibConvAbove: 0, fibConvBelow: 0,
   };
 }
 

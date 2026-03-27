@@ -135,6 +135,18 @@ function calcTPSL(
     if (ind.ema21 > 0 && ind.ema21 < price * 0.99) {
       slCands.push({ value: ind.ema21, score: ind.adx > 15 ? 2 : 1, tag: 'ema21' });
     }
+    // ⑧ [V4] 看漲 FVG 底邊（FVG 完全填補 = 支撐結構徹底失效，SL 置於其下 0.1 ATR）
+    if (ind.fvgBullBot > 0 && ind.fvgBullBot < price) {
+      slCands.push({ value: ind.fvgBullBot - atr * 0.1, score: 5, tag: 'fvgBullBot' });
+    }
+    // ⑨ [V4] BOS 支撐（被向上突破的舊阻力翻轉為支撐，精確到結構翻轉點）
+    if (ind.bosSupport > 0 && ind.bosSupport < price) {
+      slCands.push({ value: ind.bosSupport - atr * 0.1, score: 4, tag: 'bosSupport' });
+    }
+    // ⑩ [V4] VWAP-20（機構短期錨點，在其上方做多時 VWAP 是動態支撐）
+    if (ind.vwap20 > 0 && ind.vwap20 < price * 0.99) {
+      slCands.push({ value: ind.vwap20 - atr * 0.05, score: 3, tag: 'vwap20' });
+    }
 
     applyClusterBonus(slCands, 0.005, 2);
 
@@ -197,6 +209,18 @@ function calcTPSL(
     if (ind.ma60   > 0 && ind.ma60   >= minTP) tpCands.push({ value: ind.ma60,   score: 1, tag: 'ma60' });
     // ⑨ 動態理想目標（ADX 高時追更遠目標的補充）
     if (idealTP > minTP) tpCands.push({ value: idealTP, score: 2, tag: 'dynamic' });
+    // ⑩ [V4] 看跌 FVG 底邊（缺口下沿 = gap fill 入口，保守 TP；先觸及即兌現部分）
+    if (ind.fvgBearBot > 0 && ind.fvgBearBot >= minTP) {
+      tpCands.push({ value: ind.fvgBearBot, score: 6, tag: 'fvgBearBot' });
+    }
+    // ⑪ [V4] 多重斐波共振上方位（≥2 波段斐波聚合 = 極高概率目標）
+    if (ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) {
+      tpCands.push({ value: ind.fibConvAbove, score: 5, tag: 'fibConvAbove' });
+    }
+    // ⑫ [V4] VWAP-20 作為均值回歸 TP（從 VWAP 下方進場，VWAP 是第一目標）
+    if (ind.vwap20 > 0 && ind.vwap20 >= minTP) {
+      tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
+    }
 
     // 共振加成：0.8% 內多因子聚合（結構 + 斐波 = 極強目標）
     applyClusterBonus(tpCands, 0.008, 3);
@@ -233,6 +257,18 @@ function calcTPSL(
     }
     if (ind.ema21 > 0 && ind.ema21 > price * 1.01) {
       slCands.push({ value: ind.ema21, score: ind.adx > 15 ? 2 : 1, tag: 'ema21' });
+    }
+    // ⑧ [V4] 看跌 FVG 頂邊（FVG 完全填補 = 空頭結構失效，SL 置於其上 0.1 ATR）
+    if (ind.fvgBearTop > 0 && ind.fvgBearTop > price) {
+      slCands.push({ value: ind.fvgBearTop + atr * 0.1, score: 5, tag: 'fvgBearTop' });
+    }
+    // ⑨ [V4] BOS 阻力（被向下突破的舊支撐翻轉為阻力，精確到結構翻轉點）
+    if (ind.bosResistance > 0 && ind.bosResistance > price) {
+      slCands.push({ value: ind.bosResistance + atr * 0.1, score: 4, tag: 'bosResistance' });
+    }
+    // ⑩ [V4] VWAP-20（機構短期錨點，在其下方做空時 VWAP 是動態阻力）
+    if (ind.vwap20 > 0 && ind.vwap20 > price * 1.01) {
+      slCands.push({ value: ind.vwap20 + atr * 0.05, score: 3, tag: 'vwap20' });
     }
 
     applyClusterBonus(slCands, 0.005, 2);
@@ -286,6 +322,18 @@ function calcTPSL(
     if (ind.bollDn > 0 && ind.bollDn <= minTP) tpCands.push({ value: ind.bollDn, score: 2, tag: 'boll' });
     if (ind.ma60   > 0 && ind.ma60   <= minTP) tpCands.push({ value: ind.ma60,   score: 1, tag: 'ma60' });
     if (idealTP < minTP) tpCands.push({ value: idealTP, score: 2, tag: 'dynamic' });
+    // ⑩ [V4] 看漲 FVG 頂邊（缺口上沿 = gap fill 保守 TP；做空從高點下跌最先觸及此位）
+    if (ind.fvgBullTop > 0 && ind.fvgBullTop <= minTP) {
+      tpCands.push({ value: ind.fvgBullTop, score: 6, tag: 'fvgBullTop' });
+    }
+    // ⑪ [V4] 多重斐波共振下方位（≥2 波段斐波聚合 = 極高概率空頭目標）
+    if (ind.fibConvBelow > 0 && ind.fibConvBelow <= minTP) {
+      tpCands.push({ value: ind.fibConvBelow, score: 5, tag: 'fibConvBelow' });
+    }
+    // ⑫ [V4] VWAP-20 作為均值回歸 TP（從 VWAP 上方做空，VWAP 是第一目標）
+    if (ind.vwap20 > 0 && ind.vwap20 <= minTP) {
+      tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
+    }
 
     applyClusterBonus(tpCands, 0.008, 3);
 

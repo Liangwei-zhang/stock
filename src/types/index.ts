@@ -75,6 +75,17 @@ export interface TechnicalIndicators {
   bearOBLow: number;    // 看跌訂單塊底邊（機構做空區下緣）
   liqHigh: number;      // 流動性聚集高點（等高線群，做多止盈磁鐵）
   liqLow: number;       // 流動性聚集低點（等低線群，做空止盈磁鐵）
+
+  // ── V4：均值回歸 + 結構突破 + 缺口磁鐵 + 多重斐波那契共振 ──
+  vwap20: number;        // 20 期 VWAP（典型價×成交量加權，機構短期錨點）
+  bosSupport: number;    // BOS 支撐：被向上突破的波段頂 → 翻轉為支撐
+  bosResistance: number; // BOS 阻力：被向下突破的波段底 → 翻轉為阻力
+  fvgBullTop: number;    // 最近看漲 FVG 頂邊（下方支撐帶上緣，SL 保護）
+  fvgBullBot: number;    // 最近看漲 FVG 底邊（下方支撐帶下緣，跌穿 = 失效）
+  fvgBearTop: number;    // 最近看跌 FVG 頂邊（上方磁鐵帶頂，強勢 TP 延伸）
+  fvgBearBot: number;    // 最近看跌 FVG 底邊（上方磁鐵帶底，保守 TP 入口）
+  fibConvAbove: number;  // 多重波段斐波那契共振位（價格上方，≥2 條斐波聚合）
+  fibConvBelow: number;  // 多重波段斐波那契共振位（價格下方，≥2 條斐波聚合）
 }
 
 export interface SignalResult {
