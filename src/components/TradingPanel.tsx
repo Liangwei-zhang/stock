@@ -52,6 +52,7 @@ const AutoTradeConfigModal: React.FC<{
           minPredProb:   v.minPredProb / 100,
           positionPct:   v.positionPct / 100,
           cooldownMs:    v.cooldownMin * 60 * 1000,
+          exitMode:      v.exitMode,
         });
         message.success('設置已保存');
         onClose();
@@ -65,6 +66,7 @@ const AutoTradeConfigModal: React.FC<{
           minPredProb:   Math.round(config.minPredProb * 100),
           positionPct:   Math.round(config.positionPct * 100),
           cooldownMin:   Math.round(config.cooldownMs / 60000),
+          exitMode:      config.exitMode ?? 'v6',
         }}
       >
         <Form.Item label="最低觸發等級" name="minLevel">
@@ -85,6 +87,16 @@ const AutoTradeConfigModal: React.FC<{
         </Form.Item>
         <Form.Item label="冷卻時間(分鐘)" name="cooldownMin" help="同一標的兩次買入最短間隔">
           <Slider min={1} max={60} marks={{ 5: '5m', 15: '15m', 30: '30m' }} />
+        </Form.Item>
+        <Form.Item
+          label="出場模式"
+          name="exitMode"
+          help="V6：持候到止盈目標；V7：1.5R分批止盈＋移動止損至成本"
+        >
+          <Segmented options={[
+            { label: 'V6 全倉持到止盈目標', value: 'v6' },
+            { label: 'V7 分批止盈+移動止損', value: 'v7' },
+          ]} />
         </Form.Item>
       </Form>
     </Modal>

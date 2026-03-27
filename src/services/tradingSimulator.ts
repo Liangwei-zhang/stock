@@ -250,6 +250,17 @@ class TradingSimulator {
   getPositions(): Position[] { return Array.from(this.account.positions.values()); }
   getTrades():    Trade[]    { return [...this.account.trades]; }
   setOnUpdate(cb: () => void): void { this.onUpdate = cb; }
+
+  /**
+   * 更新持倉止損線（用於 V7 移動止損至成本）
+   */
+  updatePositionStop(symbol: string, newSL: number): void {
+    const pos = this.account.positions.get(symbol);
+    if (!pos) return;
+    pos.stopLoss = newSL;
+    this.persist();
+    this.notify();
+  }
 }
 
 export const tradingSimulator = new TradingSimulator();

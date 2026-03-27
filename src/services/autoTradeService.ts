@@ -23,6 +23,7 @@ export interface AutoTradeConfig {
   minPredProb:      number;               // 顶底预测最低概率（0-1）
   positionPct:      number;               // 每笔仓位占余额比例（0.05-0.5）
   cooldownMs:       number;               // 同一标的两次买入最小间隔（ms）
+  exitMode:         'v6' | 'v7';          // v6=全倉持到目標, v7=1.5R分批止盈+移動止損
 }
 
 export interface AutoTradeExecution {
@@ -48,6 +49,7 @@ const DEFAULT_CONFIG: AutoTradeConfig = {
   minPredProb:    0.70,
   positionPct:    0.10,
   cooldownMs:     5 * 60 * 1000, // 5 分钟冷却
+  exitMode:       'v6',
 };
 
 const LS_CONFIG_KEY   = 'auto_trade_config_v2';
@@ -173,7 +175,24 @@ class AutoTradeService {
 
     // ── 卖出评估（优先于买入，有持仓才评估）──────────────────────────────
 
-    if (hasPosition) {
+    if (hasPosition) {      // ── V7 模式：持倉達到 1.5R 經益即移動止損至成本 ────────────────
+      if (this.config.exitMode === 'v7') {
+        const pos = positions.find(p => p.symbol === symbol);
+        if (pos && pos.stopLoss !== undefined && pos.avgPrice !== undefined) {
+          const entry    = pos.avgPrice;
+          const risk     = entry - pos.stopLoss;
+          const target15 = entry + risk * 1.5;
+          // 尚未移至成本（止損線小於入場價）且價格已超過 1.5R
+          if (pos.stopLoss < entry && price >= target15) {
+            tradingSimulator.updatePositionStop(symbol, entry);
+            this.record({
+              symbol, action: 'buy', price, qty: 0,
+              reason: `V7: 成本防護 – 已達 1.5R，止損移至入場價 $${entry.toFixed(2)}`,
+              score: 0, result: 'skipped', message: '止損已移至成本',
+            });
+          }
+        }
+      }
       let shouldSell = false;
       let sellReason = '';
       let sellScore  = 0;
