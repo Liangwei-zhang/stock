@@ -14,6 +14,7 @@
  *  V3 — 加入訂單塊 + 流動性池 + 自適應 ATR + 黃金口袋 + 衝動結構斐波（多因子評分）
  *  V4 — 加入 VWAP-20 + BOS + FVG 缺口 + 多重斐波共振（機構錨點層）
  *  V5 — 加入 SFP + CVD + CHoCH 三重確認（信號質量門檻層）
+ *  V6 — 融合 V2 止損紀律 + V5 三重確認 + 無確認跳單（亏損最小化）
  */
 
 import { describe, it, expect } from 'vitest';
@@ -479,6 +480,165 @@ function calcTPSL_V5(price: number, isLong: boolean, ind: TechnicalIndicators) {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  V6 — 融合 V2 的止損紀律 + V5 的三重確認過濾 + 無確認跳單機制
+//
+//  設計理念：
+//   ① 止損 = V2 式 ATR 結構止損（緊貼波段低點，噪音觸及率最低）
+//   ② 無任何 V5 確認信號 → 返回 null（跳過該信號不入場）
+//   ③ 部分確認（1-2個）→ 保守 TP（V2 級別，1.5~2.0R）
+//   ④ 全面確認（SFP/CVD + CHoCH）→ 機構級 TP（V4/V5 共振目標，2.5~3.0R）
+//   ⑤ 止損硬性上限收緊至 5%（V2 特色，防止單筆大虧）
+// ═══════════════════════════════════════════════════════════
+
+function calcTPSL_V6(
+  price: number, isLong: boolean, ind: TechnicalIndicators,
+): { tp: number; sl: number } | null {
+  // ── V6 核心：無確認時跳單 ──────────────────────────────
+  const longConf  = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
+  const shortConf = (ind.sfpBear || ind.cvdBearDiv) && ind.chochBear;
+  const longPart  = ind.sfpBull || ind.cvdBullDiv || ind.chochBull;
+  const shortPart = ind.sfpBear || ind.cvdBearDiv || ind.chochBear;
+
+  // 方向對應的確認狀態
+  const confirmed = isLong ? longConf  : shortConf;
+  const partial   = isLong ? longPart  : shortPart;
+
+  // 無確認 → 跳過（不生成訂單）
+  if (!confirmed && !partial) return null;
+
+  const bRange  = Math.max(ind.bollUp - ind.bollDn, price * 0.02);
+  const atr     = ind.atr14 > 0 ? ind.atr14 : bRange / 4;
+
+  // ── V6 止損：V2 式 ATR 結構止損（更緊）──────────────────
+  // 自適應倍數：全確認可以再緊 15%，部分確認正常 ATR
+  const baseAtrM = ind.bollSqueezing ? 1.0 : ind.adx > 35 ? 1.5 : ind.adx > 25 ? 1.8 : ind.adx > 15 ? 2.2 : 2.5;
+  const atrMult  = confirmed ? baseAtrM * 0.85 : baseAtrM * 0.95;
+
+  // ── 止損目標 RR（全確認走 V4/V5 遠目標，部分確認走 V2 保守）─
+  const baseRR   = ind.adx > 30 ? 2.5 : ind.adx > 20 ? 2.0 : 1.5;
+  const targetRR = confirmed ? baseRR + 0.5 : baseRR;  // 全確認+0.5R，部分維持原本
+
+  // ── 黃金口袋止損參考 ──
+  const goldenLong  = ind.prevSwingLow  > 0 && ind.swingHigh > ind.prevSwingLow
+    ? ind.swingHigh  - 0.618 * (ind.swingHigh  - ind.prevSwingLow)  : 0;
+  const goldenShort = ind.prevSwingHigh > 0 && ind.swingLow  < ind.prevSwingHigh
+    ? ind.swingLow   + 0.618 * (ind.prevSwingHigh - ind.swingLow)   : 0;
+
+  interface C { value: number; score: number }
+  const clust = (cs: C[], pct: number, bon: number) => {
+    for (let i = 0; i < cs.length; i++) for (let j = i+1; j < cs.length; j++)
+      if (Math.abs(cs[i].value - cs[j].value) / price <= pct) { cs[i].score += bon; cs[j].score += bon; }
+  };
+
+  if (isLong) {
+    // ── SL 候選（V2 核心：結構 + ATR，V5 補充：SFP 精確點）──
+    const slC: C[] = [];
+    if (ind.swingLow    > 0 && ind.swingLow    < price) slC.push({ value: ind.swingLow    - atr * 0.3, score: 6 }); // V2 首選
+    if (ind.bullOBLow   > 0 && ind.bullOBLow   < price) slC.push({ value: ind.bullOBLow   - atr * 0.1, score: 5 });
+    if (goldenLong      > 0 && goldenLong       < price) slC.push({ value: goldenLong      - atr * 0.1, score: 4 });
+    slC.push({ value: price - atr * atrMult, score: 3 });
+    if (ind.fvgBullBot  > 0 && ind.fvgBullBot  < price) slC.push({ value: ind.fvgBullBot  - atr * 0.1, score: 5 });
+    if (ind.bosSupport  > 0 && ind.bosSupport  < price) slC.push({ value: ind.bosSupport  - atr * 0.1, score: 4 });
+    if (ind.valueAreaLow > 0 && ind.valueAreaLow < price) slC.push({ value: ind.valueAreaLow, score: 2 });
+    if (ind.bollDn      > 0 && ind.bollDn      < price) slC.push({ value: ind.bollDn,   score: 2 });
+    // V5 SFP 精確止損點（最高分：主力掃止損完成點就是失效點）
+    if (ind.sfpBull && ind.swingLow > 0 && ind.swingLow < price) slC.push({ value: ind.swingLow - atr * 0.15, score: 8 });
+    clust(slC, 0.005, 2);
+
+    const hardFloor = price * 0.95;          // V6 收緊至 5%（V2/V5 為 7%）
+    const maxSL     = price - atr * 0.2;
+    const vsl       = slC.filter(c => c.value >= hardFloor && c.value <= maxSL);
+    const sl        = Math.max(
+      vsl.length > 0 ? vsl.sort((a,b) => b.score - a.score || b.value - a.value)[0].value : Math.max(price - atr * atrMult, hardFloor),
+      hardFloor,
+    );
+    const risk   = price - sl;
+    const minTP  = price + risk * 1.5;
+    const idealTP = price + risk * targetRR;
+
+    // ── TP 候選：部分確認走 V2 保守目標；全確認走機構級目標 ──
+    const tpC: C[] = [];
+    // 共同基礎目標（V2 保守層）
+    if (ind.swingHigh    > 0 && ind.swingHigh    >= minTP) tpC.push({ value: ind.swingHigh,      score: 5 });
+    if (ind.prevSwingHigh > 0 && ind.prevSwingHigh >= minTP) tpC.push({ value: ind.prevSwingHigh, score: 4 });
+    if (ind.valueAreaHigh > 0 && ind.valueAreaHigh >= minTP) tpC.push({ value: ind.valueAreaHigh, score: 3 });
+    if (ind.bollUp        > 0 && ind.bollUp        >= minTP) tpC.push({ value: ind.bollUp,        score: 2 });
+    tpC.push({ value: price + risk * 1.618, score: 3 });  // 最基本斐波
+    if (idealTP > minTP) tpC.push({ value: idealTP, score: 2 });
+
+    if (confirmed) {
+      // 全確認：啟用所有機構級目標
+      if (ind.liqHigh      > 0 && ind.liqHigh      >= minTP) tpC.push({ value: ind.liqHigh  * 0.998, score: 9 }); // 最強磁鐵
+      if (ind.fvgBearBot   > 0 && ind.fvgBearBot   >= minTP) tpC.push({ value: ind.fvgBearBot,        score: 7 });
+      if (ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) tpC.push({ value: ind.fibConvAbove,      score: 8 }); // 多重斐波共振
+      if (ind.sfpBull && ind.liqHigh > 0 && ind.liqHigh >= minTP) tpC.push({ value: ind.liqHigh * 0.996, score: 10 }); // SFP+流動性池最高分
+      const impL = ind.swingHigh > 0 && ind.prevSwingLow > 0 ? ind.swingHigh - ind.prevSwingLow : 0;
+      if (impL > 0) {
+        const f1618 = ind.swingHigh + 0.618 * impL;
+        if (f1618 >= minTP) tpC.push({ value: f1618, score: 6 });
+      }
+    } else {
+      // 部分確認：只加 FVG 和 VWAP（V4 中等層），不開放最遠目標
+      if (ind.fvgBearBot > 0 && ind.fvgBearBot >= minTP) tpC.push({ value: ind.fvgBearBot, score: 5 });
+      if (ind.vwap20     > 0 && ind.vwap20     >= minTP) tpC.push({ value: ind.vwap20,     score: 4 });
+    }
+    clust(tpC, 0.008, 3);
+    const tp = Math.max(tpC.length > 0 ? tpC.sort((a,b) => b.score-a.score || a.value-b.value)[0].value : price + risk * 2.0, minTP);
+    return { tp, sl };
+
+  } else {
+    const slC: C[] = [];
+    if (ind.swingHigh   > 0 && ind.swingHigh   > price) slC.push({ value: ind.swingHigh   + atr * 0.3, score: 6 });
+    if (ind.bearOBHigh  > 0 && ind.bearOBHigh  > price) slC.push({ value: ind.bearOBHigh  + atr * 0.1, score: 5 });
+    if (goldenShort     > 0 && goldenShort      > price) slC.push({ value: goldenShort     + atr * 0.1, score: 4 });
+    slC.push({ value: price + atr * atrMult, score: 3 });
+    if (ind.fvgBearTop  > 0 && ind.fvgBearTop  > price) slC.push({ value: ind.fvgBearTop  + atr * 0.1, score: 5 });
+    if (ind.bosResistance > 0 && ind.bosResistance > price) slC.push({ value: ind.bosResistance + atr * 0.1, score: 4 });
+    if (ind.valueAreaHigh > 0 && ind.valueAreaHigh > price) slC.push({ value: ind.valueAreaHigh, score: 2 });
+    if (ind.bollUp      > 0 && ind.bollUp      > price) slC.push({ value: ind.bollUp, score: 2 });
+    if (ind.sfpBear && ind.swingHigh > 0 && ind.swingHigh > price) slC.push({ value: ind.swingHigh + atr * 0.15, score: 8 });
+    clust(slC, 0.005, 2);
+
+    const hardCeil = price * 1.05;           // 收緊至 5%
+    const minSL    = price + atr * 0.2;
+    const vsl      = slC.filter(c => c.value >= minSL && c.value <= hardCeil);
+    const sl       = Math.min(
+      vsl.length > 0 ? vsl.sort((a,b) => b.score-a.score || a.value-b.value)[0].value : Math.min(price + atr * atrMult, hardCeil),
+      hardCeil,
+    );
+    const risk    = sl - price;
+    const minTP   = price - risk * 1.5;
+    const idealTP = price - risk * targetRR;
+
+    const tpC: C[] = [];
+    if (ind.swingLow    > 0 && ind.swingLow    <= minTP) tpC.push({ value: ind.swingLow,     score: 5 });
+    if (ind.prevSwingLow > 0 && ind.prevSwingLow <= minTP) tpC.push({ value: ind.prevSwingLow, score: 4 });
+    if (ind.valueAreaLow > 0 && ind.valueAreaLow <= minTP) tpC.push({ value: ind.valueAreaLow, score: 3 });
+    if (ind.bollDn       > 0 && ind.bollDn      <= minTP) tpC.push({ value: ind.bollDn,       score: 2 });
+    tpC.push({ value: price - risk * 1.618, score: 3 });
+    if (idealTP < minTP) tpC.push({ value: idealTP, score: 2 });
+
+    if (confirmed) {
+      if (ind.liqLow       > 0 && ind.liqLow       <= minTP) tpC.push({ value: ind.liqLow  * 1.002, score: 9 });
+      if (ind.fvgBullTop   > 0 && ind.fvgBullTop   <= minTP) tpC.push({ value: ind.fvgBullTop,        score: 7 });
+      if (ind.fibConvBelow > 0 && ind.fibConvBelow <= minTP) tpC.push({ value: ind.fibConvBelow,      score: 8 });
+      if (ind.sfpBear && ind.liqLow > 0 && ind.liqLow <= minTP) tpC.push({ value: ind.liqLow * 1.004, score: 10 });
+      const impS = ind.prevSwingHigh > 0 && ind.swingLow > 0 ? ind.prevSwingHigh - ind.swingLow : 0;
+      if (impS > 0) {
+        const f1618 = ind.swingLow - 0.618 * impS;
+        if (f1618 <= minTP) tpC.push({ value: f1618, score: 6 });
+      }
+    } else {
+      if (ind.fvgBullTop > 0 && ind.fvgBullTop <= minTP) tpC.push({ value: ind.fvgBullTop, score: 5 });
+      if (ind.vwap20     > 0 && ind.vwap20     <= minTP) tpC.push({ value: ind.vwap20,     score: 4 });
+    }
+    clust(tpC, 0.008, 3);
+    const tp = Math.min(tpC.length > 0 ? tpC.sort((a,b) => b.score-a.score || b.value-a.value)[0].value : price - risk * 2.0, minTP);
+    return { tp, sl };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  前向模擬：檢查 TP / SL 在 maxHold 根 K 線內哪個先被觸及
 // ═══════════════════════════════════════════════════════════
 
@@ -539,8 +699,8 @@ function finalize(s: VersionStats) {
 //  主測試
 // ═══════════════════════════════════════════════════════════
 
-describe('V1~V5 止盈止損準確率對比回測', () => {
-  it('比較五個版本在合成數據上的 TP 達成率與期望值', () => {
+describe('V1~V6 止盈止損準確率對比回測', () => {
+  it('比較六個版本在合成數據上的 TP 達成率與期望值', () => {
 
     const DATASETS: Array<{ name: string; seed: number; trend: 'bull'|'bear'|'mixed' }> = [
       { name: '看漲趨勢', seed: 42,    trend: 'bull'  },
@@ -552,8 +712,10 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
     const LOOKBACK = 30;   // 前向模擬窗口
     const DATA_LEN = 480;  // 每組數據長度
 
-    const versions = ['V1', 'V2', 'V3', 'V4', 'V5'] as const;
-    const calcFns  = [calcTPSL_V1, calcTPSL_V2, calcTPSL_V3, calcTPSL_V4, calcTPSL_V5];
+    const versions = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6'] as const;
+    const calcFns: Array<(p: number, l: boolean, i: TechnicalIndicators) => { tp: number; sl: number } | null> = [
+      calcTPSL_V1, calcTPSL_V2, calcTPSL_V3, calcTPSL_V4, calcTPSL_V5, calcTPSL_V6,
+    ];
 
     // 累計跨數據集的統計
     const total: Record<string, VersionStats> = {};
@@ -584,7 +746,11 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
 
         for (let vi = 0; vi < versions.length; vi++) {
           const vName = versions[vi];
-          const { tp, sl } = calcFns[vi](price, sig.isLong, ind);
+          const result = calcFns[vi](price, sig.isLong, ind);
+
+          // V6 無確認時返回 null → 跳單（不入場，不統計任何虧損）
+          if (result === null) continue;
+          const { tp, sl } = result;
 
           // 驗證 TP/SL 方向合理（避免無效訂單對統計造成干擾）
           if (sig.isLong  && (sl >= price || tp <= price)) continue;
@@ -677,6 +843,7 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
     console.log('  V3  OB + 流動性池 + 自適應 ATR + 黃金口袋 → 多因子評分，更精確');
     console.log('  V4  VWAP + BOS + FVG + 多重斐波共振 → 機構錨點對齊，TP 更有磁力');
     console.log('  V5  SFP+CVD+CHoCH 三重確認 → 止損縮緊（精確入場）+ TP 延伸（高確信度）');
+    console.log('  V6  V2止損紀律+V5三重確認+無確認跳單 → 減少交易筆數 + 高確信度才入場');
     console.log('══════════════════════════════════════════════════════════════════════\n');
 
     // ── 資金曲線模擬（固定風險 2%，起始本金 10,000）────────────────────────
@@ -740,7 +907,7 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
     // V3-V5 的期望值應優於 V1（更精確的 TP/SL 設定應提升期望值）
     const ev = (v: string) => total[v].signals > 0 ? total[v].sumRR / total[v].signals : 0;
     // 寬鬆斷言：至少有一個高版本期望值 ≥ V1（防止因隨機種子偶爾不成立）
-    const highVersionsBetter = ev('V3') >= ev('V1') || ev('V4') >= ev('V1') || ev('V5') >= ev('V1');
+    const highVersionsBetter = ev('V3') >= ev('V1') || ev('V4') >= ev('V1') || ev('V5') >= ev('V1') || ev('V6') >= ev('V1');
     expect(highVersionsBetter).toBe(true);
   }, 60_000); // 60 秒超時
 });

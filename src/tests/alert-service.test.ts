@@ -14,7 +14,12 @@ function makeAnalysis(symbol = 'BTC', price = 50000) {
     symbol,
     price,
     name: symbol,
-    indicators: {} as any,
+    indicators: {
+      // V6 需要至少一個確認信號才會生成警報（部分確認即可）
+      sfpBull: true, sfpBear: true,
+      cvdBullDiv: false, cvdBearDiv: false,
+      chochBull: false, chochBear: false,
+    } as any,
     buySignal:  { signal: false, level: null as any, score: 0, reasons: [] },
     sellSignal: { signal: false, level: null as any, score: 0, reasons: [] },
     prediction: { type: 'neutral' as const, probability: 0, signals: [], recommendation: '' },
