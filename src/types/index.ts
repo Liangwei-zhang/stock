@@ -86,6 +86,14 @@ export interface TechnicalIndicators {
   fvgBearBot: number;    // 最近看跌 FVG 底邊（上方磁鐵帶底，保守 TP 入口）
   fibConvAbove: number;  // 多重波段斐波那契共振位（價格上方，≥2 條斐波聚合）
   fibConvBelow: number;  // 多重波段斐波那契共振位（價格下方，≥2 條斐波聚合）
+
+  // ── V5：流動性掠奪 + 成交量背離 + 結構轉變（信號質量過濾層）──
+  sfpBull: boolean;      // SFP 底部（假突破低點收回 = 多頭陷阱解除，做多質量↑↑）
+  sfpBear: boolean;      // SFP 頂部（假突破高點收回 = 空頭陷阱解除，做空質量↑↑）
+  cvdBullDiv: boolean;   // CVD 看漲背離（價格新低但成交量萎縮 / 巨量恐慌底）
+  cvdBearDiv: boolean;   // CVD 看跌背離（價格新高但成交量萎縮 = 量價背離，頂部訊號）
+  chochBull: boolean;    // CHoCH 多頭結構轉變（突破近期高點 / EMA 金叉 = 空轉多確認）
+  chochBear: boolean;    // CHoCH 空頭結構轉變（跌破近期低點 / EMA 死叉 = 多轉空確認）
 }
 
 export interface SignalResult {

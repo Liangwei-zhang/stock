@@ -72,6 +72,26 @@ function calcTPSL(
   // ── 動態 R:R 目標：強趨勢市場可以追更遠的目標 ──
   const targetRR = ind.adx > 30 ? 2.5 : ind.adx > 20 ? 2.0 : 1.5;
 
+  // ── V5：信號質量層（SFP + CVD + CHoCH 三重確認）──
+  // 原理：SFP 是最精確的入場觸發器（主力掃止損完成）；
+  //       CVD 背離確認沒有真實對手盤；CHoCH 確認結構已翻轉。
+  //       三者同向 = 機構級入場，提升止損精確度（緊一點）並延伸止盈目標。
+  //   longConfirmed  = SFP底部或CVD看漲背離 且 CHoCH多頭確認 → 多頭最高質量
+  //   shortConfirmed = SFP頂部或CVD看跌背離 且 CHoCH空頭確認 → 空頭最高質量
+  const longConfirmed  = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
+  const shortConfirmed = (ind.sfpBear || ind.cvdBearDiv) && ind.chochBear;
+  // 部分確認：只有 SFP 或只有 CHoCH（信號仍優於無確認）
+  const longPartial  = ind.sfpBull || ind.cvdBullDiv || ind.chochBull;
+  const shortPartial = ind.sfpBear || ind.cvdBearDiv || ind.chochBear;
+  // V5 R:R 加成：全確認可以追更遠目標（主力已建倉，趨勢確定性最高）
+  const v5RR = isLong
+    ? (longConfirmed ? targetRR + 0.5 : longPartial ? targetRR + 0.2 : targetRR)
+    : (shortConfirmed ? targetRR + 0.5 : shortPartial ? targetRR + 0.2 : targetRR);
+  // V5 ATR 倍數調整：確認信號止損可以更精確（更緊），無確認給更多緩衝
+  const v5AtrMult = isLong
+    ? (longConfirmed ? atrMult * 0.85 : longPartial ? atrMult * 0.92 : atrMult)
+    : (shortConfirmed ? atrMult * 0.85 : shortPartial ? atrMult * 0.92 : atrMult);
+
   // ── 黃金口袋（Golden Pocket 61.8% 回撤）—— 交易失效點 ──
   // 若衝動的 61.8% 被回撤，原始趨勢格局已破壞，止損應置於其下
   const goldenPocketLong = (ind.prevSwingLow > 0 && ind.swingHigh > ind.prevSwingLow)
@@ -147,6 +167,16 @@ function calcTPSL(
     if (ind.vwap20 > 0 && ind.vwap20 < price * 0.99) {
       slCands.push({ value: ind.vwap20 - atr * 0.05, score: 3, tag: 'vwap20' });
     }
+    // ⑪ [V5] SFP 底部確認（假突破低點收回 + SL 精確到演線底位）
+    if (ind.sfpBull && ind.swingLow > 0 && ind.swingLow < price) {
+      slCands.push({ value: ind.swingLow - atr * 0.15, score: 7, tag: 'sfpBull_sl' });
+    }
+    // ⑫ [V5] CHoCH 多頭 + CVD 看漲背離（信號最高級，所有 SL 候選一律加分）
+    if (longConfirmed) {
+      slCands.forEach(c => { c.score += 2; });  // 全面提升候選可信度
+    } else if (longPartial) {
+      slCands.forEach(c => { c.score += 1; });
+    }
 
     applyClusterBonus(slCands, 0.005, 2);
 
@@ -156,7 +186,7 @@ function calcTPSL(
 
     const bestSL = validSL.length > 0
       ? validSL.sort((a, b) => b.score - a.score || b.value - a.value)[0]
-      : { value: Math.max(price - atr * atrMult, hardFloor), score: 0, tag: 'fallback' };
+      : { value: Math.max(price - atr * v5AtrMult, hardFloor), score: 0, tag: 'fallback' };
 
     const stopLoss = Math.max(bestSL.value, hardFloor);
     const risk     = price - stopLoss;
@@ -165,7 +195,7 @@ function calcTPSL(
     //  LONG 止盈候選集
     // ════════════════════════════════════════════════════════
     const minTP   = price + risk * 1.5;       // 最低 R:R = 1.5
-    const idealTP = price + risk * targetRR;  // 動態理想目標
+    const idealTP = price + risk * v5RR;     // V5 動態理想目標
     const tpCands: Cand[] = [];
 
     // ① 流動性聚集高點（等高點群）—— 最強磁鐵：機構必然掃盪止損再反轉
@@ -221,6 +251,14 @@ function calcTPSL(
     if (ind.vwap20 > 0 && ind.vwap20 >= minTP) {
       tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
     }
+    // ⑬ [V5] SFP 底部確認（目標可延伸到流動性池卟方）
+    if (ind.sfpBull && ind.liqHigh > 0 && ind.liqHigh >= minTP) {
+      tpCands.push({ value: ind.liqHigh * 0.996, score: 8, tag: 'sfpBull_liq' });
+    }
+    // ⑭ [V5] 全面確認（SFP×CHoCH×CVD）：將最高共振位加證
+    if (longConfirmed && ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) {
+      tpCands.push({ value: ind.fibConvAbove, score: 9, tag: 'v5_confirmed_fib' });
+    }
 
     // 共振加成：0.8% 內多因子聚合（結構 + 斐波 = 極強目標）
     applyClusterBonus(tpCands, 0.008, 3);
@@ -270,6 +308,16 @@ function calcTPSL(
     if (ind.vwap20 > 0 && ind.vwap20 > price * 1.01) {
       slCands.push({ value: ind.vwap20 + atr * 0.05, score: 3, tag: 'vwap20' });
     }
+    // ⑪ [V5] SFP 頂部確認（假突破高點收回 + SL 精確到演線頂位）
+    if (ind.sfpBear && ind.swingHigh > 0 && ind.swingHigh > price) {
+      slCands.push({ value: ind.swingHigh + atr * 0.15, score: 7, tag: 'sfpBear_sl' });
+    }
+    // ⑫ [V5] CHoCH 空頭 + CVD 看跌背離（信號最高級，所有 SL 候選一律加分）
+    if (shortConfirmed) {
+      slCands.forEach(c => { c.score += 2; });
+    } else if (shortPartial) {
+      slCands.forEach(c => { c.score += 1; });
+    }
 
     applyClusterBonus(slCands, 0.005, 2);
 
@@ -279,7 +327,7 @@ function calcTPSL(
 
     const bestSL = validSL.length > 0
       ? validSL.sort((a, b) => b.score - a.score || a.value - b.value)[0]
-      : { value: Math.min(price + atr * atrMult, hardCeil), score: 0, tag: 'fallback' };
+      : { value: Math.min(price + atr * v5AtrMult, hardCeil), score: 0, tag: 'fallback' };
 
     const stopLoss = Math.min(bestSL.value, hardCeil);
     const risk     = stopLoss - price;
@@ -288,7 +336,7 @@ function calcTPSL(
     //  SHORT 止盈候選集
     // ════════════════════════════════════════════════════════
     const minTP   = price - risk * 1.5;
-    const idealTP = price - risk * targetRR;
+    const idealTP = price - risk * v5RR;
     const tpCands: Cand[] = [];
 
     if (ind.liqLow > 0 && ind.liqLow <= minTP) {
@@ -333,6 +381,14 @@ function calcTPSL(
     // ⑫ [V4] VWAP-20 作為均值回歸 TP（從 VWAP 上方做空，VWAP 是第一目標）
     if (ind.vwap20 > 0 && ind.vwap20 <= minTP) {
       tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
+    }
+    // ⑬ [V5] SFP 頂部確認（目標可延伸到流動性池下方）
+    if (ind.sfpBear && ind.liqLow > 0 && ind.liqLow <= minTP) {
+      tpCands.push({ value: ind.liqLow * 1.004, score: 8, tag: 'sfpBear_liq' });
+    }
+    // ⑭ [V5] 全面確認（SFP×CHoCH×CVD）：將最高共振位加證
+    if (shortConfirmed && ind.fibConvBelow > 0 && ind.fibConvBelow <= minTP) {
+      tpCands.push({ value: ind.fibConvBelow, score: 9, tag: 'v5_confirmed_fib' });
     }
 
     applyClusterBonus(tpCands, 0.008, 3);

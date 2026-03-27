@@ -66,6 +66,9 @@ function makeIndicators(overrides: Record<string, number> = {}) {
     vwap20: 0, bosSupport: 0, bosResistance: 0,
     fvgBullTop: 0, fvgBullBot: 0, fvgBearTop: 0, fvgBearBot: 0,
     fibConvAbove: 0, fibConvBelow: 0,
+    sfpBull: false, sfpBear: false,
+    cvdBullDiv: false, cvdBearDiv: false,
+    chochBull: false, chochBear: false,
     ...overrides,
   };
 }

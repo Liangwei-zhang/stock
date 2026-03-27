@@ -14,6 +14,9 @@
  */
 
 import { StockData, TechnicalIndicators } from '../types';
+import { detectSFP } from './sfp';
+import { detectCVDBreach } from './cvd';
+import { detectCHOCH, detectTrendChange } from './choch';
 
 // ═══════════════════════════════════════════════════════════════
 //  LRU 缓存（Bug-4 / Bug-12 修复核心）
@@ -827,6 +830,19 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
   const fvgs     = scanNearestFVGs(data, curClose);
   const fibConv  = calcFibConfluence(highs, lows, curClose);
 
+  // ── V5：流動性掠奪 / 成交量背離 / 結構轉變（信號質量過濾層）──
+  const sfp   = detectSFP(data);
+  const cvd   = detectCVDBreach(data);
+  // CHoCH 需要先有 SFP 信號，若無 SFP 則用獨立趨勢轉變檢測
+  const chochRaw = sfp ? detectCHOCH(data, sfp.type) : detectTrendChange(data);
+
+  const sfpBull   = sfp?.type === 'bottom';
+  const sfpBear   = sfp?.type === 'top';
+  const cvdBullDiv = cvd?.type === 'bottom';
+  const cvdBearDiv = cvd?.type === 'top';
+  const chochBull  = chochRaw?.type === 'bottom';
+  const chochBear  = chochRaw?.type === 'top';
+
   const result: TechnicalIndicators = {
     ma5:  ma5Arr[n]  || 0, ma10: ma10Arr[n] || 0,
     ma20: ma20Arr[n] || 0, ma60: ma60Arr[n] || 0,
@@ -852,6 +868,9 @@ export function calculateAllIndicators(data: StockData[], symbol = ''): Technica
     ...bos,
     ...fvgs,
     ...fibConv,
+    sfpBull, sfpBear,
+    cvdBullDiv, cvdBearDiv,
+    chochBull, chochBear,
   };
 
   cacheSet(key, result);
@@ -874,6 +893,9 @@ function emptyIndicators(): TechnicalIndicators {
     vwap20: 0, bosSupport: 0, bosResistance: 0,
     fvgBullTop: 0, fvgBullBot: 0, fvgBearTop: 0, fvgBearBot: 0,
     fibConvAbove: 0, fibConvBelow: 0,
+    sfpBull: false, sfpBear: false,
+    cvdBullDiv: false, cvdBearDiv: false,
+    chochBull: false, chochBear: false,
   };
 }
 
