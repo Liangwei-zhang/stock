@@ -180,10 +180,13 @@ class AutoTradeService {
         const pos = positions.find(p => p.symbol === symbol);
         if (pos && pos.stopLoss !== undefined && pos.avgPrice !== undefined) {
           const entry    = pos.avgPrice;
-          const risk     = entry - pos.stopLoss;
-          const target15 = entry + risk * 1.5;
-          // 尚未移至成本（止損線小於入場價）且價格已超過 1.5R
-          if (pos.stopLoss < entry && price >= target15) {
+          const isLong   = (pos.side ?? 'long') === 'long';
+          const risk     = isLong ? entry - pos.stopLoss : pos.stopLoss - entry;
+          const target15 = isLong ? entry + risk * 1.5   : entry - risk * 1.5;
+          // 尚未移至成本（止損線尚在入場價另一側）且價格已超過 1.5R
+          const notAtBreakeven = isLong ? pos.stopLoss < entry : pos.stopLoss > entry;
+          const hitTarget      = isLong ? price >= target15    : price <= target15;
+          if (notAtBreakeven && hitTarget) {
             tradingSimulator.updatePositionStop(symbol, entry);
             this.record({
               symbol, action: 'buy', price, qty: 0,

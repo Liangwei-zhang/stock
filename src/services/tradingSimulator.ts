@@ -227,12 +227,24 @@ class TradingSimulator {
       let shouldExit = false;
       let exitReason: Trade['exitReason'] = 'signal';
       let reason = '';
-      if (pos.stopLoss && price <= pos.stopLoss) {
-        shouldExit = true; exitReason = 'stop_loss';
-        reason = `止損觸發 @ $${price.toFixed(2)}（止損線 $${pos.stopLoss.toFixed(2)}）`;
-      } else if (pos.takeProfit && price >= pos.takeProfit) {
-        shouldExit = true; exitReason = 'take_profit';
-        reason = `止盈觸發 @ $${price.toFixed(2)}（止盈線 $${pos.takeProfit.toFixed(2)}）`;
+      const isLong = (pos.side ?? 'long') === 'long';
+      if (isLong) {
+        if (pos.stopLoss && price <= pos.stopLoss) {
+          shouldExit = true; exitReason = 'stop_loss';
+          reason = `止損觸發 @ $${price.toFixed(2)}（止損線 $${pos.stopLoss.toFixed(2)}）`;
+        } else if (pos.takeProfit && price >= pos.takeProfit) {
+          shouldExit = true; exitReason = 'take_profit';
+          reason = `止盈觸發 @ $${price.toFixed(2)}（止盈線 $${pos.takeProfit.toFixed(2)}）`;
+        }
+      } else {
+        // 空頭：止損在上方，止盈在下方
+        if (pos.stopLoss && price >= pos.stopLoss) {
+          shouldExit = true; exitReason = 'stop_loss';
+          reason = `止損觸發 @ $${price.toFixed(2)}（止損線 $${pos.stopLoss.toFixed(2)}）`;
+        } else if (pos.takeProfit && price <= pos.takeProfit) {
+          shouldExit = true; exitReason = 'take_profit';
+          reason = `止盈觸發 @ $${price.toFixed(2)}（止盈線 $${pos.takeProfit.toFixed(2)}）`;
+        }
       }
       if (shouldExit) {
         const res = await this.executeTrade({ symbol: sym, type: 'sell', price, reason, confidence: 100 }, pos.quantity, exitReason);

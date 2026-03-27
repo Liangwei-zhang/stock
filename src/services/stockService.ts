@@ -61,6 +61,7 @@ function genSimulated(symbol: string, name: string, basePrice = 100, vol = 0.02,
 }
 
 function simTick(last: StockData, vol = 0.02): StockData {
+  if (!isFinite(last.price) || last.price <= 0) return { ...last, timestamp: Date.now() };
   const chg   = (Math.random() - 0.5) * 2 * vol * last.price;
   const price = Math.max(0.01, last.price + chg);
   return {

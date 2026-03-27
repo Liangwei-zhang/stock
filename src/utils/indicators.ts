@@ -29,7 +29,8 @@ function cacheKey(data: StockData[], symbol: string): string {
   if (data.length === 0) return `${symbol}:0:0:0`;
   const last = data[data.length - 1];
   // 加入 symbol 避免不同標的哈希碰撞返回錯誤結果
-  return `${symbol}:${data.length}:${last.close.toFixed(4)}:${last.timestamp}`;
+  const closeStr = isFinite(last.close) ? last.close.toFixed(4) : 'invalid';
+  return `${symbol}:${data.length}:${closeStr}:${last.timestamp}`;
 }
 
 function cacheGet(key: string): TechnicalIndicators | undefined {
