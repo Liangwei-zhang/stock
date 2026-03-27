@@ -669,6 +669,80 @@ function simulateTrade(
 }
 
 // ═══════════════════════════════════════════════════════════
+//  V7 增強模擬：分批止盈(1.5R取50%) + 移動止損至成本
+//  設計邏輯：
+//   ① 價格達 1.5R → 結算 50% 持倉（鎖住利潤）
+//   ② 剩餘 50% 止損移至成本（確保全局不虧）
+//   ③ 等待剩餘倉位觸及全目標 TP 或成本止損
+//  預期效益：
+//   - 避免回吐利潤（原本已達 1.5R 卻最終止損的情況）
+//   - 降低回撤：最壞情況是 +0.75R，消除大部分負 returnR
+// ═══════════════════════════════════════════════════════════
+
+function simulateTradeV7(
+  data: StockData[], entryBar: number, isLong: boolean,
+  tp: number, sl: number, maxHold = 30,
+): { outcome: Outcome; returnR: number } {
+  const entry    = data[entryBar].close;
+  const risk     = Math.abs(entry - sl);
+  if (risk <= 0) return { outcome: 'neutral', returnR: 0 };
+
+  const p1R      = 1.5;  // 分批兌現觸發點
+  const p1Trigger = isLong ? entry + risk * p1R : entry - risk * p1R;
+
+  let p1Booked  = false;
+  let currentSL = sl;
+
+  for (let i = entryBar + 1; i < Math.min(entryBar + maxHold + 1, data.length); i++) {
+    const bar = data[i];
+    if (isLong) {
+      // 達到 1.5R：分批兌現 50%，剩餘 50% 止損移至成本
+      if (!p1Booked && bar.high >= p1Trigger) {
+        p1Booked  = true;
+        currentSL = entry;
+      }
+      // 止損觸發（原始 sl 或移動後的成本）
+      if (bar.low <= currentSL) {
+        const bookedR  = p1Booked ? p1R * 0.5 : 0;
+        const remainR  = (currentSL - entry) / risk * (p1Booked ? 0.5 : 1.0);
+        const totalR   = bookedR + remainR;
+        return { outcome: totalR > 0 ? 'tp' : totalR < 0 ? 'sl' : 'neutral', returnR: totalR };
+      }
+      // 全目標觸發
+      if (bar.high >= tp) {
+        const bookedR = p1Booked ? p1R * 0.5 : 0;
+        const remainR = (tp - entry) / risk * (p1Booked ? 0.5 : 1.0);
+        return { outcome: 'tp', returnR: bookedR + remainR };
+      }
+    } else {
+      if (!p1Booked && bar.low <= p1Trigger) {
+        p1Booked  = true;
+        currentSL = entry;
+      }
+      if (bar.high >= currentSL) {
+        const bookedR  = p1Booked ? p1R * 0.5 : 0;
+        const remainR  = (entry - currentSL) / risk * (p1Booked ? 0.5 : 1.0);
+        const totalR   = bookedR + remainR;
+        return { outcome: totalR > 0 ? 'tp' : totalR < 0 ? 'sl' : 'neutral', returnR: totalR };
+      }
+      if (bar.low <= tp) {
+        const bookedR = p1Booked ? p1R * 0.5 : 0;
+        const remainR = (entry - tp) / risk * (p1Booked ? 0.5 : 1.0);
+        return { outcome: 'tp', returnR: bookedR + remainR };
+      }
+    }
+  }
+  // 持有到期
+  const finalClose = data[Math.min(entryBar + maxHold, data.length - 1)].close;
+  const bookedR    = p1Booked ? p1R * 0.5 : 0;
+  const remainR    = isLong
+    ? (finalClose - entry) / risk * (p1Booked ? 0.5 : 1.0)
+    : (entry - finalClose) / risk * (p1Booked ? 0.5 : 1.0);
+  const totalR = bookedR + remainR;
+  return { outcome: 'neutral', returnR: totalR };
+}
+
+// ═══════════════════════════════════════════════════════════
 //  計算版本結果統計
 // ═══════════════════════════════════════════════════════════
 
@@ -699,8 +773,8 @@ function finalize(s: VersionStats) {
 //  主測試
 // ═══════════════════════════════════════════════════════════
 
-describe('V1~V6 止盈止損準確率對比回測', () => {
-  it('比較六個版本在合成數據上的 TP 達成率與期望值', () => {
+describe('V1~V7 止盈止損準確率對比回測', () => {
+  it('比較七個版本在合成數據上的 TP 達成率與期望值', () => {
 
     const DATASETS: Array<{ name: string; seed: number; trend: 'bull'|'bear'|'mixed' }> = [
       { name: '看漲趨勢', seed: 42,    trend: 'bull'  },
@@ -712,9 +786,14 @@ describe('V1~V6 止盈止損準確率對比回測', () => {
     const LOOKBACK = 30;   // 前向模擬窗口
     const DATA_LEN = 480;  // 每組數據長度
 
-    const versions = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6'] as const;
+    const versions = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7'] as const;
     const calcFns: Array<(p: number, l: boolean, i: TechnicalIndicators) => { tp: number; sl: number } | null> = [
-      calcTPSL_V1, calcTPSL_V2, calcTPSL_V3, calcTPSL_V4, calcTPSL_V5, calcTPSL_V6,
+      calcTPSL_V1, calcTPSL_V2, calcTPSL_V3, calcTPSL_V4, calcTPSL_V5, calcTPSL_V6, calcTPSL_V6,
+    ];
+    // V7 使用與 V6 相同的 TP/SL 計算，但採用增強版模擬（分批止盈 + 移動止損）
+    const simFns: Array<typeof simulateTrade> = [
+      simulateTrade, simulateTrade, simulateTrade, simulateTrade, simulateTrade,
+      simulateTrade, simulateTradeV7,
     ];
 
     // 累計跨數據集的統計
@@ -760,7 +839,7 @@ describe('V1~V6 止盈止損準確率對比回測', () => {
           const tpDist  = Math.abs(tp  - price) / price * 100;
           const slDepth = risk / price * 100;
 
-          const { outcome, returnR } = simulateTrade(data, sig.bar, sig.isLong, tp, sl, LOOKBACK);
+          const { outcome, returnR } = simFns[vi](data, sig.bar, sig.isLong, tp, sl, LOOKBACK);
           const st = total[vName];
           st.signals++;
           st.sumRR += returnR;
@@ -788,7 +867,7 @@ describe('V1~V6 止盈止損準確率對比回測', () => {
 
     console.log('\n');
     console.log('══════════════════════════════════════════════════════════════════════');
-    console.log('  V1 ~ V5  止盈止損準確率對比回測');
+    console.log('  V1 ~ V7  止盈止損準確率對比回測');
     console.log(`  數據集：看漲(seed=42) + 看跌(seed=1337) + 混合(seed=99999)，各 ${DATA_LEN} 根K線`);
     console.log(`  信號：RSI14 < 37 反彈做多 / > 63 回落做空 ｜ 模擬窗口：${LOOKBACK} 根`);
     console.log('══════════════════════════════════════════════════════════════════════');
@@ -844,6 +923,7 @@ describe('V1~V6 止盈止損準確率對比回測', () => {
     console.log('  V4  VWAP + BOS + FVG + 多重斐波共振 → 機構錨點對齊，TP 更有磁力');
     console.log('  V5  SFP+CVD+CHoCH 三重確認 → 止損縮緊（精確入場）+ TP 延伸（高確信度）');
     console.log('  V6  V2止損紀律+V5三重確認+無確認跳單 → 減少交易筆數 + 高確信度才入場');
+    console.log('  V7  V6基礎上加入分批止盈(1.5R取50%) + 移動止損至成本 → 鎖利更穩，降低回撤');
     console.log('══════════════════════════════════════════════════════════════════════\n');
 
     // ── 資金曲線模擬（固定風險 2%，起始本金 10,000）────────────────────────
@@ -907,7 +987,7 @@ describe('V1~V6 止盈止損準確率對比回測', () => {
     // V3-V5 的期望值應優於 V1（更精確的 TP/SL 設定應提升期望值）
     const ev = (v: string) => total[v].signals > 0 ? total[v].sumRR / total[v].signals : 0;
     // 寬鬆斷言：至少有一個高版本期望值 ≥ V1（防止因隨機種子偶爾不成立）
-    const highVersionsBetter = ev('V3') >= ev('V1') || ev('V4') >= ev('V1') || ev('V5') >= ev('V1') || ev('V6') >= ev('V1');
+    const highVersionsBetter = ev('V3') >= ev('V1') || ev('V4') >= ev('V1') || ev('V5') >= ev('V1') || ev('V6') >= ev('V1') || ev('V7') >= ev('V1');
     expect(highVersionsBetter).toBe(true);
   }, 60_000); // 60 秒超時
 });

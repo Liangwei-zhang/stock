@@ -234,9 +234,24 @@ class AutoTradeService {
 
       if (shouldBuy) {
         if (price <= 0) return; // 价格异常保护
-        // 计算仓位
+
+        // ── V6 確認門檻：依確認強度調整倉位大小 ─────────────────────────
+        const ind = analysis.indicators;
+        const longConfirmed = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
+        const longPartial   = ind.sfpBull || ind.cvdBullDiv || ind.chochBull;
+        if (!longConfirmed && !longPartial) {
+          this.record({
+            symbol, action: 'buy', price, qty: 0, reason: buyReason, score: buyScore,
+            result: 'skipped', message: 'V6：無三重確認信號，跳過',
+          });
+          return;
+        }
+        const effectivePct = longConfirmed ? this.config.positionPct : this.config.positionPct * 0.5;
+        buyReason += longConfirmed ? ' | 🔒全確認' : ' | ⚡部分確認';
+
+        // 計算倉位（全確認 = 100% positionPct，部分確認 = 50%）
         const qty = Math.floor(
-          (account.balance * this.config.positionPct) / price * 10_000
+          (account.balance * effectivePct) / price * 10_000
         ) / 10_000;
 
         if (qty > 0 && account.balance >= qty * price * 1.001) {
