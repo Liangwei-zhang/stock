@@ -56,7 +56,7 @@ function calcTPSL(
   price: number,
   type: 'buy' | 'sell' | 'top' | 'bottom',
   ind: TechnicalIndicators,
-): { takeProfit: number; stopLoss: number } | null {
+): { takeProfit: number; stopLoss: number; confirmationLevel: 'full' | 'partial' } | null {
   const isLong = type === 'buy' || type === 'bottom';
 
   // ── V6 核心：三重確認門檻 ───────────────────────────────────────
@@ -195,7 +195,10 @@ function calcTPSL(
       tpCands.push({ value: ind.bollUp, score: 2, tag: 'boll' });
     }
     const fibR1618 = price + risk * 1.618;
-    if (fibR1618 >= minTP) tpCands.push({ value: fibR1618, score: 3, tag: 'fib_r1618' });
+    const fibR1272 = price + risk * 1.272;
+    if (fibR1618 >= minTP) tpCands.push({ value: fibR1618, score: 4, tag: 'fib_r1618' });
+    if (fibR1272 >= minTP) tpCands.push({ value: fibR1272, score: 3, tag: 'fib_r1272' });
+    if (ind.ma60 > 0 && ind.ma60 >= minTP) tpCands.push({ value: ind.ma60, score: 1, tag: 'ma60' });
     if (idealTP > minTP) tpCands.push({ value: idealTP, score: 2, tag: 'dynamic' });
 
     if (confirmed) {
@@ -207,7 +210,7 @@ function calcTPSL(
         tpCands.push({ value: ind.liqHigh * 0.996, score: 10, tag: 'sfpBull_liq' });
       }
       if (ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) {
-        tpCands.push({ value: ind.fibConvAbove, score: 8, tag: 'fibConvAbove' });
+        tpCands.push({ value: ind.fibConvAbove, score: 9, tag: 'fibConvAbove' });
       }
       if (ind.fvgBearBot > 0 && ind.fvgBearBot >= minTP) {
         tpCands.push({ value: ind.fvgBearBot, score: 7, tag: 'fvgBearBot' });
@@ -228,41 +231,6 @@ function calcTPSL(
         tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
       }
     }
-    const fibR1272 = price + risk * 1.272;
-    if (fibR1618 >= minTP) tpCands.push({ value: fibR1618, score: 4, tag: 'fib_r1618' });
-    if (fibR1272 >= minTP) tpCands.push({ value: fibR1272, score: 3, tag: 'fib_r1272' });
-    // ⑦ 成交量分布（POC / VAH）—— 流動性磁鐵，價格傾向回歸
-    if (ind.poc > price && ind.poc >= minTP) {
-      tpCands.push({ value: ind.poc, score: 3, tag: 'poc' });
-    }
-    if (ind.valueAreaHigh > 0 && ind.valueAreaHigh >= minTP) {
-      tpCands.push({ value: ind.valueAreaHigh, score: 3, tag: 'vah' });
-    }
-    // ⑧ 技術形態邊界
-    if (ind.bollUp > 0 && ind.bollUp >= minTP) tpCands.push({ value: ind.bollUp, score: 2, tag: 'boll' });
-    if (ind.ma60   > 0 && ind.ma60   >= minTP) tpCands.push({ value: ind.ma60,   score: 1, tag: 'ma60' });
-    // ⑨ 動態理想目標（ADX 高時追更遠目標的補充）
-    if (idealTP > minTP) tpCands.push({ value: idealTP, score: 2, tag: 'dynamic' });
-    // ⑩ [V4] 看跌 FVG 底邊（缺口下沿 = gap fill 入口，保守 TP；先觸及即兌現部分）
-    if (ind.fvgBearBot > 0 && ind.fvgBearBot >= minTP) {
-      tpCands.push({ value: ind.fvgBearBot, score: 6, tag: 'fvgBearBot' });
-    }
-    // ⑪ [V4] 多重斐波共振上方位（≥2 波段斐波聚合 = 極高概率目標）
-    if (ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) {
-      tpCands.push({ value: ind.fibConvAbove, score: 5, tag: 'fibConvAbove' });
-    }
-    // ⑫ [V4] VWAP-20 作為均值回歸 TP（從 VWAP 下方進場，VWAP 是第一目標）
-    if (ind.vwap20 > 0 && ind.vwap20 >= minTP) {
-      tpCands.push({ value: ind.vwap20, score: 4, tag: 'vwap20_tp' });
-    }
-    // ⑬ [V5] SFP 底部確認（目標可延伸到流動性池卟方）
-    if (ind.sfpBull && ind.liqHigh > 0 && ind.liqHigh >= minTP) {
-      tpCands.push({ value: ind.liqHigh * 0.996, score: 8, tag: 'sfpBull_liq' });
-    }
-    // ⑭ [V5] 全面確認（SFP×CHoCH×CVD）：將最高共振位加證
-    if (longConfirmed && ind.fibConvAbove > 0 && ind.fibConvAbove >= minTP) {
-      tpCands.push({ value: ind.fibConvAbove, score: 9, tag: 'v5_confirmed_fib' });
-    }
 
     // 共振加成：0.8% 內多因子聚合（結構 + 斐波 = 極強目標）
     applyClusterBonus(tpCands, 0.008, 3);
@@ -274,6 +242,7 @@ function calcTPSL(
     return {
       takeProfit: Math.max(bestTP.value, minTP),
       stopLoss,
+      confirmationLevel: confirmed ? 'full' : 'partial',
     };
   } else {
     // ════════════════════════════════════════════════════════
@@ -395,6 +364,7 @@ function calcTPSL(
     return {
       takeProfit: Math.min(bestTP.value, minTP),
       stopLoss,
+      confirmationLevel: confirmed ? 'full' : 'partial',
     };
   }
 }
@@ -445,7 +415,7 @@ class AlertService {
       reasons:   signal.reasons,
       timestamp: now,
       read:      false,
-      message:   `${icons[type]} ${analysis.symbol} ${typeLabel[type]}信號 [${lvLabel[signal.level]}] $${analysis.price.toFixed(2)} | ${signal.score}分`,
+      message:   `${icons[type]} ${analysis.symbol} ${typeLabel[type]}信號 [${lvLabel[signal.level]}] $${analysis.price.toFixed(2)} | ${signal.score}分 | ${tpsl.confirmationLevel === 'full' ? '全確認' : '部分確認'}`,
       ...tpsl,
     };
 
@@ -463,10 +433,12 @@ class AlertService {
     const lowerVal   = isLongAlert ? alert.stopLoss   : alert.takeProfit;
     const upperLabel = isLongAlert ? '🎯 止盈' : '⚠️ 風控';
     const lowerLabel = isLongAlert ? '🛡️ 止損' : '🎯 目標';
+    const confLabel = alert.confirmationLevel === 'full' ? '🔒 全確認' : '⚡ 部分確認';
     const tgMsg =
       `🚸 *股票預警*\n\n` +
       `${icons[type]} *${analysis.symbol}* ${typeLabel[type]}信號\n` +
-      `等級：${lvLabel[signal.level]}  |  價格：${fmt(analysis.price)}  |  評分：${signal.score}分\n` +
+      `等級：${lvLabel[signal.level]}  |  確認度：${confLabel}  |  評分：${signal.score}分\n` +
+      `價格：${fmt(analysis.price)}\n` +
       (upperVal ? `${upperLabel}：${fmt(upperVal)}` : '') +
       (lowerVal ? `  ${lowerLabel}：${fmt(lowerVal)}` : '') +
       (alert.takeProfit && alert.stopLoss

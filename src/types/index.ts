@@ -123,6 +123,7 @@ export interface Alert {
   message: string;
   takeProfit?: number;  // 止盈價位
   stopLoss?:   number;  // 止損價位
+  confirmationLevel?: 'full' | 'partial';  // V6 確認強度
 }
 
 export interface KLineData {
