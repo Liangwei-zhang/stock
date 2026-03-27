@@ -523,10 +523,11 @@ interface VersionStats {
   slRRs:    number[]; // 每次 SL 觸發的 R 值（用於一致性驗證）
   avgSLDepth: number; // 止損到入場的深度（%）
   avgTPDist:  number; // 止盈到入場的距離（%）
+  trades:     number[]; // 按序記錄每筆交易的 returnR（用於資金曲線模擬）
 }
 
 function makeStats(): VersionStats {
-  return { signals: 0, tpHits: 0, slHits: 0, neutrals: 0, sumRR: 0, sumRRw: 0, tpRRs: [], slRRs: [], avgSLDepth: 0, avgTPDist: 0 };
+  return { signals: 0, tpHits: 0, slHits: 0, neutrals: 0, sumRR: 0, sumRRw: 0, tpRRs: [], slRRs: [], avgSLDepth: 0, avgTPDist: 0, trades: [] };
 }
 
 function finalize(s: VersionStats) {
@@ -599,6 +600,7 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
           st.sumRR += returnR;
           st.avgSLDepth += slDepth;
           st.avgTPDist  += tpDist;
+          st.trades.push(returnR);
           if (outcome === 'tp') {
             st.tpHits++;
             st.sumRRw += returnR;
@@ -675,6 +677,59 @@ describe('V1~V5 止盈止損準確率對比回測', () => {
     console.log('  V3  OB + 流動性池 + 自適應 ATR + 黃金口袋 → 多因子評分，更精確');
     console.log('  V4  VWAP + BOS + FVG + 多重斐波共振 → 機構錨點對齊，TP 更有磁力');
     console.log('  V5  SFP+CVD+CHoCH 三重確認 → 止損縮緊（精確入場）+ TP 延伸（高確信度）');
+    console.log('══════════════════════════════════════════════════════════════════════\n');
+
+    // ── 資金曲線模擬（固定風險 2%，起始本金 10,000）────────────────────────
+    const INIT_CAPITAL = 10_000;
+    const RISK_PCT     = 0.02;   // 每筆交易風險 2% 本金
+
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log('  資金曲線模擬  ｜  起始本金：10,000  ｜  每筆固定風險：2%');
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log(
+      pad('版本',4), ' │',
+      pad('交易筆數',9), ' │',
+      pad('最終資金',10), ' │',
+      pad('淨損益',10), ' │',
+      pad('報酬率',9), ' │',
+      pad('最大回撤',9), ' │',
+      pad('最低資金',10),
+    );
+    console.log('─'.repeat(80));
+
+    let bestFinal = -Infinity, bestCapVer = '';
+
+    for (const v of versions) {
+      let cap   = INIT_CAPITAL;
+      let peak  = INIT_CAPITAL;
+      let maxDD = 0;
+      let minCap = INIT_CAPITAL;
+
+      for (const r of total[v].trades) {
+        cap += cap * RISK_PCT * r;
+        if (cap > peak) peak = cap;
+        const dd = (peak - cap) / peak * 100;
+        if (dd > maxDD)  maxDD = dd;
+        if (cap < minCap) minCap = cap;
+      }
+
+      const net       = cap - INIT_CAPITAL;
+      const returnPct = (cap / INIT_CAPITAL - 1) * 100;
+      if (cap > bestFinal) { bestFinal = cap; bestCapVer = v; }
+
+      console.log([
+        pad(v, 4), ' │',
+        pad(`${total[v].trades.length}`, 9), ' │',
+        pad(cap.toFixed(0), 10), ' │',
+        pad((net >= 0 ? '+' : '') + net.toFixed(0), 10), ' │',
+        pad((returnPct >= 0 ? '+' : '') + returnPct.toFixed(2) + '%', 9), ' │',
+        pad('-' + maxDD.toFixed(2) + '%', 9), ' │',
+        pad(minCap.toFixed(0), 10),
+      ].join(''));
+    }
+
+    console.log('─'.repeat(80));
+    console.log(`  ★ 最終資金最多：${bestCapVer}（剩餘 ${bestFinal.toFixed(0)} 元）`);
     console.log('══════════════════════════════════════════════════════════════════════\n');
 
     // 測試斷言：所有版本都應產生有意義的信號
