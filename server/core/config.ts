@@ -25,7 +25,7 @@ function parseConfig() {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     console.error('❌ 環境變數配置錯誤：');
-    result.error.errors.forEach(e => {
+    result.error.issues.forEach(e => {
       console.error(`  ${e.path.join('.')}: ${e.message}`);
     });
     process.exit(1);

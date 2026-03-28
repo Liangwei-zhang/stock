@@ -66,7 +66,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 const PORT = config.PORT;
 
 // CRIT-06: 顯式連接 Redis，啟動時立即暴露配置錯誤（lazyConnect: true 預設不自動連接）
-redis.connect().catch(err => {
+redis.connect().catch((err: Error) => {
   console.error('[Redis] 啟動連接失敗：', err.message);
 });
 

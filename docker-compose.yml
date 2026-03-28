@@ -50,6 +50,7 @@ services:
       RESERVE_POOL_SIZE: 15
       SERVER_RESET_QUERY: DISCARD ALL
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
+      AUTH_TYPE: scram-sha-256
     expose:
       - "5432"
     healthcheck:
@@ -113,8 +114,7 @@ services:
     image: nginx:alpine
     container_name: ${APP_NAME:-stock}_nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "3000:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./dist:/app/static:ro
