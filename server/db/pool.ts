@@ -16,14 +16,7 @@ pool.on('error', (err) => {
   console.error('[DB] 未預期的連接錯誤：', err.message);
 });
 
-// ── graceful shutdown（對應 Python FastAPI lifespan 上下文）──
-async function shutdownDb(): Promise<void> {
-  console.log('[DB] 正在關閉連接池...');
-  await pool.end();
-  console.log('[DB] 連接池已關閉');
-}
-process.once('SIGTERM', () => void shutdownDb().then(() => process.exit(0)));
-process.once('SIGINT',  () => void shutdownDb().then(() => process.exit(0)));
+// shutdown 由 server/api.ts 統一編排（REL-01），此處不再各自 exit
 
 /** 執行查詢，返回結果行數組 */
 export async function query<T = Record<string, unknown>>(

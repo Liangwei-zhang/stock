@@ -45,7 +45,11 @@ export async function verifyEmailCode(
 ): Promise<boolean> {
   const lEmail = email.toLowerCase();
 
-  // 快速路徑：Redis
+  // SEC-02: 按 email 維度的嘗試次數限制（5 分鐘內最多 5 次）
+  const attemptKey = `verify_attempt:${lEmail}`;
+  const attempts = await redis.incr(attemptKey);
+  if (attempts === 1) await redis.expire(attemptKey, 300);
+  if (attempts > 5) return false;
   const cached = await redis.get(`code:${lEmail}`);
   if (cached && cached === code) {
     await redis.del(`code:${lEmail}`);

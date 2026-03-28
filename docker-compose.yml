@@ -15,8 +15,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockuser}"]
       interval: 10s
@@ -50,8 +50,13 @@ services:
       RESERVE_POOL_SIZE: 15
       SERVER_RESET_QUERY: DISCARD ALL
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
-    ports:
-      - "6432:5432"
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,8 +74,8 @@ services:
         --save 60 1000
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -89,11 +94,11 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-stockuser}:${DB_PASSWORD:-stockpass}@pgbouncer:5432/${DB_NAME:-stockdb}
       REDIS_URL: redis://redis:6379/0
       NODE_ENV: production
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
       pgbouncer:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped

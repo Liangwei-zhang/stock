@@ -71,9 +71,7 @@ export async function delCache(key: string): Promise<void> {
   }
 }
 
-// ── graceful shutdown ──
-process.once('SIGTERM', () => void redis.quit());
-process.once('SIGINT',  () => void redis.quit());
+// shutdown 由 server/api.ts 統一編排（REL-01），此處不再各自 exit
 
 /**
  * 帶防擊穿分布式鎖的緩存查詢

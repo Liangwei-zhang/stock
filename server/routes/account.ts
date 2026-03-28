@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { query, queryOne } from '../db/pool.js';
 
@@ -19,7 +20,7 @@ const updateAccountSchema = z.object({
  * GET /api/account
  * 返回帳戶資訊 + 動態計算可用現金
  */
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const userId = req.userId!;
 
   const [userRow, accountRow, portfolioRows] = await Promise.all([
@@ -68,7 +69,7 @@ router.get('/', async (req, res) => {
         : 0,
     })),
   });
-});
+}));
 
 /**
  * PUT /api/account
@@ -77,7 +78,7 @@ router.get('/', async (req, res) => {
 router.put(
   '/',
   validate(updateAccountSchema),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const userId = req.userId!;
     const body = req.body as z.infer<typeof updateAccountSchema>;
 
@@ -107,7 +108,7 @@ router.put(
     }
 
     res.json({ message: '更新成功' });
-  }
+  })
 );
 
 export default router;

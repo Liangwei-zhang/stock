@@ -16,6 +16,7 @@ import { query, pool } from '../db/pool.js';
 import { getCache, setCache } from '../core/cache.js';
 import { processBuySignal } from './buyScanner.js';
 import { processSellSignal } from './sellScanner.js';
+import pLimit from 'p-limit';
 
 const SCANNER_INTERVAL_MS = 5 * 60 * 1000; // 5 分鐘
 

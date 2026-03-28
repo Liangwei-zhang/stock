@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { query, queryOne } from '../db/pool.js';
 import { cacheWithLock, delCache } from '../core/cache.js';
@@ -31,7 +32,7 @@ const updateSchema = z.object({
 });
 
 /** GET /api/watchlist */
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const rows = await query(
     `SELECT w.id, w.symbol, w.notify, w.min_score, w.created_at,
@@ -43,10 +44,10 @@ router.get('/', async (req, res) => {
     [userId]
   );
   res.json({ items: rows });
-});
+}));
 
 /** POST /api/watchlist */
-router.post('/', validate(addSchema), async (req, res) => {
+router.post('/', validate(addSchema), asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const { symbol, min_score, notify } = req.body as z.infer<typeof addSchema>;
 
@@ -85,10 +86,10 @@ router.post('/', validate(addSchema), async (req, res) => {
   await delCache('active_symbols');
 
   res.status(201).json(row);
-});
+}));
 
 /** PUT /api/watchlist/:id */
-router.put('/:id', validate(updateSchema), async (req, res) => {
+router.put('/:id', validate(updateSchema), asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const { id } = req.params;
   const body = req.body as z.infer<typeof updateSchema>;
@@ -111,10 +112,10 @@ router.put('/:id', validate(updateSchema), async (req, res) => {
 
   await delCache('active_symbols');
   res.json(row);
-});
+}));
 
 /** DELETE /api/watchlist/:id */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const { id } = req.params;
 
@@ -126,6 +127,6 @@ router.delete('/:id', async (req, res) => {
 
   await delCache('active_symbols');
   res.json({ message: '已刪除' });
-});
+}));
 
 export default router;

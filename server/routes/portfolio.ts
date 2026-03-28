@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { query, queryOne } from '../db/pool.js';
 import { delCache } from '../core/cache.js';
@@ -30,7 +31,7 @@ const addSchema = z.object({
 const updateSchema = addSchema.partial().omit({ symbol: true });
 
 /** GET /api/portfolio */
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const rows = await query(
     `SELECT p.id, p.symbol, p.shares, p.avg_cost, p.total_capital,
@@ -43,10 +44,10 @@ router.get('/', async (req, res) => {
     [userId]
   );
   res.json({ items: rows });
-});
+}));
 
 /** POST /api/portfolio */
-router.post('/', validate(addSchema), async (req, res) => {
+router.post('/', validate(addSchema), asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const body = req.body as z.infer<typeof addSchema>;
 
@@ -92,10 +93,10 @@ router.post('/', validate(addSchema), async (req, res) => {
 
   await delCache('active_symbols');
   res.status(201).json(row);
-});
+}));
 
 /** PUT /api/portfolio/:id */
-router.put('/:id', validate(updateSchema), async (req, res) => {
+router.put('/:id', validate(updateSchema), asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const { id } = req.params;
   const body = req.body as z.infer<typeof updateSchema>;
@@ -135,10 +136,10 @@ router.put('/:id', validate(updateSchema), async (req, res) => {
   );
   await delCache('active_symbols');
   res.json(row);
-});
+}));
 
 /** DELETE /api/portfolio/:id */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   const userId = req.userId!;
   const { id } = req.params;
   const row = await queryOne(
@@ -148,6 +149,6 @@ router.delete('/:id', async (req, res) => {
   if (!row) return res.status(404).json({ error: '持倉不存在' });
   await delCache('active_symbols');
   res.json({ message: '已刪除' });
-});
+}));
 
 export default router;

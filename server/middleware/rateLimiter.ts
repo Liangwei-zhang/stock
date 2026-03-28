@@ -85,15 +85,22 @@ export async function removeFromBlacklist(ip: string): Promise<void> {
   }
 }
 
-/** 限流統計（對應 Python get_rate_limit_stats） */
+/** 限流統計（對應 Python get_rate_limit_stats）*/
 export async function getRateLimitStats(): Promise<{
   active_keys: number;
   window_seconds: number;
   default_limit: number;
 }> {
   try {
-    const keys = await redis.keys('rl:*');
-    return { active_keys: keys.length, window_seconds: 60, default_limit: 1000 };
+    // REL-03: 用 SCAN 代替 KEYS，避免閘 Redis O(N) 陰塞
+    let cursor = '0';
+    let count = 0;
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', 'rl:*', 'COUNT', '1000');
+      cursor = next;
+      count += keys.length;
+    } while (cursor !== '0');
+    return { active_keys: count, window_seconds: 60, default_limit: 1000 };
   } catch {
     return { active_keys: 0, window_seconds: 60, default_limit: 1000 };
   }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { query, queryOne, transaction } from '../db/pool.js';
 import { config } from '../core/config.js';
@@ -36,7 +37,7 @@ const confirmQuerySchema = z.object({
 router.get(
   '/:id/confirm',
   validate(confirmQuerySchema, 'query'),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { action, t } = req.query as { action: 'accept' | 'ignore'; t: string };
 
@@ -129,7 +130,7 @@ router.get(
     });
 
     return res.send(renderPage('✅', `已確認！持倉已自動更新 📊`));
-  }
+  })
 );
 
 const adjustSchema = z.object({
@@ -145,7 +146,7 @@ const adjustSchema = z.object({
 router.post(
   '/:id/adjust',
   validate(adjustSchema),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { t } = req.query as { t?: string };
     const { actual_shares, actual_price } = req.body as z.infer<typeof adjustSchema>;

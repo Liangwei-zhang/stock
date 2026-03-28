@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { optionalAuth } from '../middleware/authMiddleware.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { query } from '../db/pool.js';
 import { cacheWithLock, cacheKey } from '../core/cache.js';
@@ -21,7 +22,7 @@ const searchQuerySchema = z.object({
 router.get(
   '/',
   validate(searchQuerySchema, 'query'),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { q, type, limit } = req.query as unknown as z.infer<typeof searchQuerySchema>;
 
     const key = cacheKey('search', { q: q.toUpperCase(), type, limit });
@@ -48,7 +49,7 @@ router.get(
     }, 60); // 緩存 60 秒
 
     res.json({ items: results, query: q });
-  }
+  })
 );
 
 export default router;

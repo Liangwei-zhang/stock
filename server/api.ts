@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { config, corsOrigins } from './core/config.js';
+import { pool } from './db/pool.js';
+import { redis } from './core/cache.js';
 import { blacklistMiddleware } from './middleware/rateLimiter.js';
 import { requestLogger } from './core/monitoring.js';
 import healthRouter       from './routes/health.js';
@@ -17,7 +20,11 @@ const app = express();
 
 // ── 信任代理（Nginx） ──
 app.set('trust proxy', 1);
-
+// ── 安全頭（SEC-01）──
+app.use(helmet({
+  contentSecurityPolicy: false, // 由 Nginx 處理 CSP
+  hsts: { maxAge: 31_536_000, includeSubDomains: true },
+}));
 // ── CORS ──
 app.use(cors({
   origin: corsOrigins,
@@ -57,7 +64,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 const PORT = config.PORT;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`✅ API 服務啟動：http://localhost:${PORT}`);
   console.log(`   環境: ${config.NODE_ENV}`);
 
@@ -67,10 +74,27 @@ app.listen(PORT, () => {
   }
 });
 
-// graceful shutdown — 停止接新請求，等 DB/Redis 各自的 SIGTERM handler 清理
-process.once('SIGINT', () => {
-  console.log('[API] 收到 SIGINT，正在優雅關閉...');
+// ── 統一 graceful shutdown（REL-01：集中編排，避免競爭 process.exit）──
+async function gracefulShutdown(signal: string): Promise<void> {
+  console.log(`[API] 收到 ${signal}，開始優雅關閉...`);
+
+  // 1. 停止接收新連接
+  server.close();
+
+  // 2. 等待正在處理的請求完成（最多 2 秒）
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // 3. 並行關閉 DB + Redis
+  await Promise.allSettled([
+    pool.end().then(() => console.log('[DB] 連接池已關閉')),
+    redis.quit().then(() => console.log('[Redis] 已斷開')),
+  ]);
+
+  console.log('[API] 優雅關閉完成');
   process.exit(0);
-});
+}
+
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT',  () => gracefulShutdown('SIGINT'));
 
 export default app;

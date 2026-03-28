@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { rateLimiter } from '../middleware/rateLimiter.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validate } from '../middleware/validate.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import {
@@ -34,7 +35,7 @@ router.post(
   '/send-code',
   rateLimiter(10, 60), // 同 IP 每分鐘最多 10 次
   validate(sendCodeSchema),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { email } = req.body as { email: string };
     const ip = (req.ip ?? '').replace(/^::ffff:/, '');
 
@@ -50,7 +51,7 @@ router.post(
     await sendVerificationCode(email, code);
 
     res.json({ message: '驗證碼已發送，請查收郵件' });
-  }
+  })
 );
 
 /**
@@ -61,7 +62,7 @@ router.post(
   '/verify',
   rateLimiter(20, 60),
   validate(verifySchema),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const { email, code } = req.body as { email: string; code: string };
 
     const valid = await verifyEmailCode(email, code);
