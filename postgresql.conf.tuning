@@ -1,0 +1,66 @@
+# PostgreSQL 生產調優配置
+# update.md §3.3 — 針對 100 萬日活 + PM2 4 進程 + PgBouncer
+#
+# 部署方式：
+#   docker-compose 中掛載：
+#     ./postgresql.conf.tuning:/etc/postgresql/postgresql.conf:ro
+#   或複製進容器後 pg_ctl reload
+#
+# 假設伺服器：8 核 16GB RAM（最低規格），SSD 存儲
+
+# ── 連接數 ──────────────────────────────────────────────────
+# PgBouncer 作為連接池，PostgreSQL 本身不需要太多直接連接
+# PM2 4 進程 × 50 pool + scanner + email-worker + 預留 DBA
+max_connections = 250
+
+# ── 記憶體 ──────────────────────────────────────────────────
+# shared_buffers = 25% RAM
+shared_buffers = 4GB
+
+# 告訴 PostgreSQL 系統可用於緩存的記憶體（不實際分配）
+effective_cache_size = 12GB
+
+# 每個排序/hash 操作可用記憶體（對頻繁 ORDER BY 的 notifications 查詢重要）
+work_mem = 16MB
+
+# 維護操作（VACUUM, CREATE INDEX）可用記憶體
+maintenance_work_mem = 512MB
+
+# ── WAL（寫入性能）────────────────────────────────────────────
+wal_buffers = 64MB
+
+# checkpoint 期間盡量平攤 IO（避免 IO spike）
+checkpoint_completion_target = 0.9
+
+# WAL 文件最大大小（越大越少 checkpoint，但崩潰恢復更慢）
+max_wal_size = 2GB
+min_wal_size = 256MB
+
+# ── 查詢優化 ─────────────────────────────────────────────────
+# SSD 隨機讀取接近順序讀取
+random_page_cost = 1.1
+
+# SSD 並發 IO 能力（NVMe 可設 200+）
+effective_io_concurrency = 200
+
+# ── 分區表（notifications + user_events 按月分區）──────────────
+# 確保查詢時自動剪枝（只掃描相關分區）
+enable_partition_pruning = on
+
+# ── 並行查詢 ──────────────────────────────────────────────────
+# 允許並行掃描（對大表 analytics 有用）
+max_parallel_workers_per_gather = 4
+max_parallel_workers = 8
+
+# ── 日誌（生產診斷）──────────────────────────────────────────
+# 記錄超過 1 秒的慢查詢
+log_min_duration_statement = 1000
+
+# 記錄所有 DDL 操作
+log_ddl = on
+
+# ── 自動 VACUUM 調優（億級通知表必要）────────────────────────────
+autovacuum = on
+autovacuum_vacuum_scale_factor = 0.01     # 1% 變更觸發（比默認 20% 更頻繁）
+autovacuum_analyze_scale_factor = 0.005   # 0.5% 觸發 ANALYZE
+autovacuum_vacuum_cost_delay = 2ms        # 減少 IO 限速（SSD 環境）
