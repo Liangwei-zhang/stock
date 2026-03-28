@@ -60,6 +60,17 @@ const PORT = config.PORT;
 app.listen(PORT, () => {
   console.log(`✅ API 服務啟動：http://localhost:${PORT}`);
   console.log(`   環境: ${config.NODE_ENV}`);
+
+  // PM2 cluster ready signal（wait_ready: true 配合使用，零停機部署）
+  if (process.send) {
+    process.send('ready');
+  }
+});
+
+// graceful shutdown — 停止接新請求，等 DB/Redis 各自的 SIGTERM handler 清理
+process.once('SIGINT', () => {
+  console.log('[API] 收到 SIGINT，正在優雅關閉...');
+  process.exit(0);
 });
 
 export default app;

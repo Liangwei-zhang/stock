@@ -5,14 +5,25 @@ const { Pool } = pg;
 
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
-  max: 40,
+  max: 50,                       // PM2 4 進程 × 50 = 200 併發 DB 連接
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
+  allowExitOnIdle: false,        // 空閒時不讓進程自動退出
+  maxUses: 7_500,                // 對應 Python pool_recycle=1800，防長連接洩漏
 });
 
 pool.on('error', (err) => {
   console.error('[DB] 未預期的連接錯誤：', err.message);
 });
+
+// ── graceful shutdown（對應 Python FastAPI lifespan 上下文）──
+async function shutdownDb(): Promise<void> {
+  console.log('[DB] 正在關閉連接池...');
+  await pool.end();
+  console.log('[DB] 連接池已關閉');
+}
+process.once('SIGTERM', () => void shutdownDb().then(() => process.exit(0)));
+process.once('SIGINT',  () => void shutdownDb().then(() => process.exit(0)));
 
 /** 執行查詢，返回結果行數組 */
 export async function query<T = Record<string, unknown>>(

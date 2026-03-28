@@ -62,3 +62,39 @@ export async function blacklistMiddleware(req: Request, res: Response, next: Nex
   }
   next();
 }
+
+/** 添加 IP 到黑名單（對應 Python add_to_blacklist） */
+export async function addToBlacklist(
+  ip: string,
+  reason = 'manual',
+  ttlSec = 86_400 * 30   // 預設 30 天
+): Promise<void> {
+  try {
+    await redis.setex(`blacklist:${ip}`, ttlSec, reason);
+  } catch (err) {
+    console.error('[黑名單] 添加失敗：', (err as Error).message);
+  }
+}
+
+/** 從黑名單移除（對應 Python remove_from_blacklist） */
+export async function removeFromBlacklist(ip: string): Promise<void> {
+  try {
+    await redis.del(`blacklist:${ip}`);
+  } catch (err) {
+    console.error('[黑名單] 移除失敗：', (err as Error).message);
+  }
+}
+
+/** 限流統計（對應 Python get_rate_limit_stats） */
+export async function getRateLimitStats(): Promise<{
+  active_keys: number;
+  window_seconds: number;
+  default_limit: number;
+}> {
+  try {
+    const keys = await redis.keys('rl:*');
+    return { active_keys: keys.length, window_seconds: 60, default_limit: 1000 };
+  } catch {
+    return { active_keys: 0, window_seconds: 60, default_limit: 1000 };
+  }
+}

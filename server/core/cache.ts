@@ -32,32 +32,48 @@ export function cacheKey(prefix: string, params: Record<string, unknown>): strin
   return `${prefix}:${hash}`;
 }
 
-/** 取緩存（L1 → L2） */
+/** 取緩存（L1 → L2）— Redis 異常時降級返回 null，由 L1 兜底 */
 export async function getCache(key: string): Promise<unknown | null> {
   const l1Entry = l1.get(key);
   if (l1Entry && l1Entry.exp > Date.now()) return l1Entry.data;
   l1.delete(key);
 
-  const raw = await redis.get(key);
-  if (raw) {
-    const data: unknown = JSON.parse(raw);
-    l1.set(key, { data, exp: Date.now() + L1_TTL_MS });
-    return data;
+  try {
+    const raw = await redis.get(key);
+    if (raw) {
+      const data: unknown = JSON.parse(raw);
+      l1.set(key, { data, exp: Date.now() + L1_TTL_MS });
+      return data;
+    }
+  } catch (err) {
+    console.warn('[Cache] Redis 讀取降級：', (err as Error).message);
   }
   return null;
 }
 
-/** 設置緩存（L1 + L2） */
+/** 設置緩存（L1 + L2）— Redis 異常時僅寫 L1 */
 export async function setCache(key: string, value: unknown, ttlSec = 300): Promise<void> {
   l1.set(key, { data: value, exp: Date.now() + L1_TTL_MS });
-  await redis.setex(key, ttlSec, JSON.stringify(value));
+  try {
+    await redis.setex(key, ttlSec, JSON.stringify(value));
+  } catch (err) {
+    console.warn('[Cache] Redis 寫入降級：', (err as Error).message);
+  }
 }
 
 /** 刪除緩存（L1 + L2） */
 export async function delCache(key: string): Promise<void> {
   l1.delete(key);
-  await redis.del(key);
+  try {
+    await redis.del(key);
+  } catch (err) {
+    console.warn('[Cache] Redis 刪除降級：', (err as Error).message);
+  }
 }
+
+// ── graceful shutdown ──
+process.once('SIGTERM', () => void redis.quit());
+process.once('SIGINT',  () => void redis.quit());
 
 /**
  * 帶防擊穿分布式鎖的緩存查詢

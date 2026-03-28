@@ -5,9 +5,12 @@ export default {
       name: 'stock-api',
       script: './server/api.ts',
       interpreter: 'tsx',
-      instances: 'max',
+      instances: 4,                    // PM2 cluster 4 進程 → ~3200 QPS
       exec_mode: 'cluster',
       max_memory_restart: '500M',
+      kill_timeout: 10_000,            // graceful shutdown 等待 10 秒
+      listen_timeout: 5_000,
+      wait_ready: true,                // 等待 process.send('ready') 再切流量
       env: {
         NODE_ENV: 'production',
       },
