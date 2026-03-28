@@ -780,8 +780,8 @@ describe('autoTradeService — configuration', () => {
     vi.resetModules();
     const { autoTradeService } = await import('../services/autoTradeService');
     autoTradeService.setEnabled(true);
-    expect(lsMock['auto_trade_config_v2']).toBeDefined();
-    expect(JSON.parse(lsMock['auto_trade_config_v2']).enabled).toBe(true);
+    expect(lsMock['auto_trade_config_v3']).toBeDefined();
+    expect(JSON.parse(lsMock['auto_trade_config_v3']).enabled).toBe(true);
   });
 
   it('meetsLevel: high > medium > any', async () => {

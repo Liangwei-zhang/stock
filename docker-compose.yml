@@ -1,0 +1,122 @@
+# ═══════════════════════════════════════════════════
+# Stock 訂閱系統 — Docker Compose
+# 包含: PostgreSQL 16 + PgBouncer + Redis 7 + API + Nginx
+# ═══════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL 16 ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${APP_NAME:-stock}_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-stockuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockpass}
+      POSTGRES_DB: ${DB_NAME:-stockdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+        -c shared_buffers=512MB
+        -c effective_cache_size=1GB
+        -c work_mem=16MB
+        -c maintenance_work_mem=128MB
+        -c max_connections=200
+        -c wal_level=replica
+        -c max_wal_size=1GB
+    restart: unless-stopped
+
+  # ── PgBouncer ──
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: ${APP_NAME:-stock}_pgbouncer
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-stockuser}
+      DB_PASSWORD: ${DB_PASSWORD:-stockpass}
+      DB_NAME: ${DB_NAME:-stockdb}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 40
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 15
+      SERVER_RESET_QUERY: DISCARD ALL
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    ports:
+      - "6432:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Redis 7 ──
+  redis:
+    image: redis:7-alpine
+    container_name: ${APP_NAME:-stock}_redis
+    command: >
+      redis-server
+        --appendonly yes
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --save 60 1000
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── API Server ──
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${APP_NAME:-stock}_api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-stockuser}:${DB_PASSWORD:-stockpass}@pgbouncer:5432/${DB_NAME:-stockdb}
+      REDIS_URL: redis://redis:6379/0
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Nginx ──
+  nginx:
+    image: nginx:alpine
+    container_name: ${APP_NAME:-stock}_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./dist:/app/static:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
