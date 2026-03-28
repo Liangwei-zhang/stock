@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import { query, queryOne } from '../db/pool.js';
 import { redis } from '../core/cache.js';
 import { calcPosition } from './positionEngine.js';
+import { config } from '../core/config.js';
 
 export interface BuySignal {
   symbol: string;
@@ -92,8 +94,7 @@ export async function processBuySignal(signal: BuySignal): Promise<void> {
 
     // 生成一次性 token
     const linkToken = crypto.randomUUID();
-    const crypto2 = await import('crypto');
-    const linkSig = crypto2.createHmac('sha256', process.env.TRADE_LINK_SECRET ?? 'secret')
+    const linkSig = crypto.createHmac('sha256', config.TRADE_LINK_SECRET)
       .update(`${linkToken}:${sub.user_id}:${signal.symbol}`)
       .digest('hex');
 

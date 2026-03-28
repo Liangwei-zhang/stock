@@ -1,4 +1,4 @@
-import { query, queryOne, transaction } from './db/pool.js';
+import { query } from './db/pool.js';
 import { sendEmail } from './services/emailService.js';
 
 const BATCH_SIZE = 50;
@@ -97,7 +97,7 @@ export async function startEmailWorker(): Promise<void> {
     running = false;
     clearInterval(cleanupInterval);
     console.log('📬 Email Worker 關閉');
-    process.exit(0);
+    // 不直接 process.exit，避免在 API 進程內殺死整個進程（REL-01 由 api.ts 統一關閉）
   };
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);

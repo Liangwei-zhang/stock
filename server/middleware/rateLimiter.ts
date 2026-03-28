@@ -22,15 +22,18 @@ export function rateLimiter(limit: number, windowSec = 60) {
 
     try {
       // 滑動窗口 pipeline（原子操作，線性可擴展）
-      const [, count] = await redis
+      const results = await redis
         .pipeline()
         .zremrangebyscore(key, 0, nowMs - windowMs)   // 移除過期成員
         .zcard(key)                                    // 當前窗口計數
         .zadd(key, nowMs, `${nowMs}-${Math.random()}`) // 寫入本次請求
         .expire(key, windowSec + 5)                    // 設置 key 過期
-        .exec() as [null, number, any, any][];
+        .exec();
 
-      if ((count as unknown as number) >= limit) {
+      // results[1] = [null, count] — ZCARD 的返回值（CRIT-05: 修正 pipeline 類型斷言）
+      const count = (results?.[1]?.[1] as number) ?? 0;
+
+      if (count >= limit) {
         return res.status(429).json({
           error: '請求過於頻繁，請稍後再試',
           retryAfter: windowSec,

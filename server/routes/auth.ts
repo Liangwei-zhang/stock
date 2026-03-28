@@ -100,10 +100,10 @@ router.post(
  * POST /api/auth/logout
  * 登出（撤銷 session）
  */
-router.post('/logout', authMiddleware, async (req, res) => {
+router.post('/logout', authMiddleware, asyncHandler(async (req, res) => {
   const token = req.headers.authorization!.slice(7);
   await revokeSession(token);
   res.json({ message: '已登出' });
-});
+}));
 
 export default router;
