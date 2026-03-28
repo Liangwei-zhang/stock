@@ -93,7 +93,7 @@ router.post(
         isNew: !user.last_login_at,
       },
     });
-  }
+  })
 );
 
 /**

@@ -218,7 +218,7 @@ router.post(
     });
 
     res.json({ message: '已記錄您的實際操作', actual_amount });
-  }
+  })
 );
 
 function statusLabel(s: string): string {
