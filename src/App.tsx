@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ConfigProvider, theme, Layout, Typography, Tag, Button, Spin } from 'antd';
+import { ConfigProvider, theme, Layout, Typography, Tag, Button, Spin, App as AntApp } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { alertService }     from './services/alertService';
 import { indicatorService } from './services/indicatorService';
@@ -88,12 +88,14 @@ const App: React.FC = () => {
   if (!initialized) {
     return (
       <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+        <AntApp>
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
           <div style={{ textAlign: 'center' }}>
             <Spin size="large"/>
             <div style={{ color: '#8b949e', marginTop: 16, fontSize: 14 }}>正在加载数据…</div>
           </div>
         </div>
+        </AntApp>
       </ConfigProvider>
     );
   }
@@ -103,6 +105,7 @@ const App: React.FC = () => {
       colorPrimary: '#1890ff', colorBgContainer: '#1c2333', colorBgElevated: '#1c2333',
       colorText: '#e6edf3', colorTextSecondary: '#8b949e', borderRadius: 8,
     }}}>
+      <AntApp>
       <Layout className="app">
 
         <AppHeader
@@ -216,6 +219,7 @@ const App: React.FC = () => {
         />
 
       </Layout>
+      </AntApp>
     </ConfigProvider>
   );
 };

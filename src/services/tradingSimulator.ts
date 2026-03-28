@@ -45,12 +45,14 @@ export interface Account {
 }
 
 export interface TradeSignal {
-  symbol:     string;
-  type:       'buy' | 'sell';
-  price:      number;
-  reason:     string;
-  confidence: number;
-  atr?:       number;
+  symbol:      string;
+  type:        'buy' | 'sell';
+  price:       number;
+  reason:      string;
+  confidence:  number;
+  atr?:        number;
+  stopLoss?:   number;   // 明確指定止損位（覆蓋預設 ATR 計算）
+  takeProfit?: number;   // 明確指定止盈位（覆蓋預設 ATR 計算）
 }
 
 interface PersistedState {
@@ -177,17 +179,16 @@ class TradingSimulator {
         const avgPrice  = (existing.avgPrice * existing.quantity + price * quantity) / totalQty;
         const newSL     = avgPrice - atrValue * ATR_STOP_MULT;
         const newTP     = avgPrice + atrValue * ATR_PROFIT_MULT;
-        // 確保 SL < entryPrice < TP，避免 ATR 劇烈變小時方向反轉
         existing.quantity   = totalQty;
         existing.avgPrice   = avgPrice;
-        existing.stopLoss   = Math.min(newSL, avgPrice * 0.98);
-        existing.takeProfit = Math.max(newTP, avgPrice * 1.02);
+        existing.stopLoss   = signal.stopLoss   ?? Math.min(newSL, avgPrice * 0.98);
+        existing.takeProfit = signal.takeProfit ?? Math.max(newTP, avgPrice * 1.02);
       } else {
         this.account.positions.set(symbol, {
           symbol, name: symbol, quantity, avgPrice: price,
           entryDate: Date.now(), side: 'long',
-          stopLoss:   price - atrValue * ATR_STOP_MULT,
-          takeProfit: price + atrValue * ATR_PROFIT_MULT,
+          stopLoss:   signal.stopLoss   ?? (price - atrValue * ATR_STOP_MULT),
+          takeProfit: signal.takeProfit ?? (price + atrValue * ATR_PROFIT_MULT),
         });
       }
       this.account.trades.unshift({ id: ++this.tradeCounter, symbol, side: 'buy', quantity, price, total, fee, date: Date.now(), exitReason });

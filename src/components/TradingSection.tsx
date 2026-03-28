@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Typography, Tag, Button, Table, Row, Col, Select, Space, message } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Typography, Tag, Button, Table, Row, Col, Select, Space, App, Modal, Form, Switch, Slider, Segmented } from 'antd';
+import { ReloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { EXIT_MODE_LABELS } from '../services/autoTradeService';
 import { autoTradeService }  from '../services/autoTradeService';
 import { tradingSimulator }  from '../services/tradingSimulator';
 import { calcTradeStats }    from '../services/backtestStats';
@@ -30,7 +31,9 @@ interface Props {
 }
 
 export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refreshKey: _, onRefresh }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('autotrade');
+  const [activeTab,   setActiveTab]   = useState<TabKey>('autotrade');
+  const [settingOpen, setSettingOpen] = useState(false);
+  const { message } = App.useApp();
 
   const atCfg       = autoTradeService.getConfig();
   const priceMap    = new Map(stocks.map(s => [s.stock.symbol, s.stock.price]));
@@ -94,6 +97,12 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
       {/* ── Tab content ───────────────────────────────────────────────── */}
       <div className="trading-tab-content">
 
+        {/* ── 自动交易设置 Modal ──────────────────────────────────────── */}
+        <AutoTradeSettingModal
+          open={settingOpen}
+          onClose={() => { setSettingOpen(false); onRefresh(); }}
+        />
+
         {/* Auto Trade */}
         {activeTab === 'autotrade' && (
           <div>
@@ -103,13 +112,22 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                 <Text style={{ fontSize: 11, color: '#484f58', marginLeft: 8 }}>
                   等级:[{({ high: '高级≥75', medium: '中级≥55', any: '任意' } as Record<string, string>)[atCfg.minLevel]}]&nbsp;
                   仓位:{(atCfg.positionPct * 100).toFixed(0)}%&nbsp;
-                  预测:{atCfg.usePrediction ? `✓≥${(atCfg.minPredProb * 100).toFixed(0)}%` : '✗'}&nbsp;
                   冷却:{(atCfg.cooldownMs / 60000).toFixed(0)}分
                 </Text>
+              </Col>
+              <Col>
+                <Tag
+                  color={({ v1:'default', v2:'blue', v3:'cyan', v4:'geekblue', v5:'purple', v6:'green', v7:'gold' } as Record<string,string>)[atCfg.exitMode] ?? 'default'}
+                  style={{ cursor: 'pointer', fontSize: 11 }}
+                  onClick={() => setSettingOpen(true)}
+                >
+                  🎯 {EXIT_MODE_LABELS[atCfg.exitMode as keyof typeof EXIT_MODE_LABELS] ?? atCfg.exitMode}
+                </Tag>
               </Col>
               <Col flex={1}/>
               <Col>
                 <Space size={6}>
+                  <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingOpen(true)}>退出策略</Button>
                   <Button size="small" onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), true); onRefresh(); }}>全部开启</Button>
                   <Button size="small" danger onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), false); onRefresh(); }}>全部关闭</Button>
                   {executions.length > 0 && <Button size="small" onClick={() => { autoTradeService.clearExecutions(); onRefresh(); }}>清空记录</Button>}
@@ -299,5 +317,78 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
 
       </div>
     </div>
+  );
+};
+
+// ─── 自動交易設置 Modal ────────────────────────────────────────────────────────
+
+const AutoTradeSettingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const cfg = autoTradeService.getConfig();
+
+  return (
+    <Modal
+      title={<><SettingOutlined /> 自動交易設置</>}
+      open={open}
+      onCancel={onClose}
+      onOk={() => {
+        const v = form.getFieldsValue();
+        autoTradeService.updateConfig({
+          minLevel:      v.minLevel,
+          usePrediction: v.usePrediction,
+          minPredProb:   v.minPredProb / 100,
+          positionPct:   v.positionPct / 100,
+          cooldownMs:    v.cooldownMin * 60 * 1000,
+          exitMode:      v.exitMode,
+        });
+        message.success('設置已保存');
+        onClose();
+      }}
+      okText="保存" cancelText="取消" width={480}
+      destroyOnHidden
+    >
+      <Form
+        form={form}
+        layout="horizontal"
+        labelCol={{ span: 10 }}
+        style={{ marginTop: 16 }}
+        initialValues={{
+          minLevel:      cfg.minLevel,
+          usePrediction: cfg.usePrediction,
+          minPredProb:   Math.round(cfg.minPredProb * 100),
+          positionPct:   Math.round(cfg.positionPct * 100),
+          cooldownMin:   Math.round(cfg.cooldownMs / 60000),
+          exitMode:      cfg.exitMode ?? 'v6',
+        }}
+      >
+        <Form.Item
+          label="退出策略"
+          name="exitMode"
+          help="V1-V5 無入場過濾；V6/V7 需三重確認（SFP/CVD+CHoCH）才入場"
+        >
+          <Select options={(Object.entries(EXIT_MODE_LABELS) as [string, string][]).map(([v, l]) => ({ value: v, label: l }))} />
+        </Form.Item>
+        <Form.Item label="最低觸發等級" name="minLevel">
+          <Segmented options={[
+            { label: '高級(≥75分)', value: 'high' },
+            { label: '中級(≥55分)', value: 'medium' },
+            { label: '任意信號',    value: 'any'    },
+          ]} />
+        </Form.Item>
+        <Form.Item label="響應頂底預測" name="usePrediction" valuePropName="checked">
+          <Switch />
+        </Form.Item>
+        <Form.Item label="預測最低概率%" name="minPredProb">
+          <Slider min={50} max={95} marks={{ 65: '65%', 75: '75%', 85: '85%' }} />
+        </Form.Item>
+        <Form.Item label="每筆倉位%" name="positionPct" help="佔可用餘額百分比">
+          <Slider min={5} max={50} step={5} marks={{ 10: '10%', 20: '20%', 30: '30%' }} />
+        </Form.Item>
+        <Form.Item label="冷卻時間(分鐘)" name="cooldownMin" help="同一標的兩次買入最短間隔">
+          <Slider min={1} max={60} marks={{ 5: '5m', 15: '15m', 30: '30m' }} />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };

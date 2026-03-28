@@ -10,6 +10,10 @@
 
 import { StockAnalysis } from '../types';
 import { tradingSimulator, TradeSignal } from './tradingSimulator';
+import { calcTPSL, EXIT_MODE_LABELS } from '../utils/tpsl';
+import type { ExitMode } from '../utils/tpsl';
+export type { ExitMode };
+export { EXIT_MODE_LABELS };
 
 // ─── 类型 ─────────────────────────────────────────────────────────────────────
 
@@ -23,7 +27,7 @@ export interface AutoTradeConfig {
   minPredProb:      number;               // 顶底预测最低概率（0-1）
   positionPct:      number;               // 每笔仓位占余额比例（0.05-0.5）
   cooldownMs:       number;               // 同一标的两次买入最小间隔（ms）
-  exitMode:         'v6' | 'v7';          // v6=全倉持到目標, v7=1.5R分批止盈+移動止損
+  exitMode:         ExitMode;             // V1~V7 止盈止損策略
 }
 
 export interface AutoTradeExecution {
@@ -52,7 +56,7 @@ const DEFAULT_CONFIG: AutoTradeConfig = {
   exitMode:       'v6',
 };
 
-const LS_CONFIG_KEY   = 'auto_trade_config_v2';
+const LS_CONFIG_KEY   = 'auto_trade_config_v3'; // v3: exitMode 擴展為 V1-V7
 const LS_COOLDOWN_KEY = 'auto_trade_cooldown_v1';
 const MAX_EXECUTIONS  = 100;
 
@@ -257,32 +261,34 @@ class AutoTradeService {
       if (shouldBuy) {
         if (price <= 0) return; // 价格异常保护
 
-        // ── V6 確認門檻：依確認強度調整倉位大小 ─────────────────────────
-        const ind = analysis.indicators;
-        const longConfirmed = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
-        const longPartial   = ind.sfpBull || ind.cvdBullDiv || ind.chochBull;
-        if (!longConfirmed && !longPartial) {
+        // ── 依據退出模式計算 TP/SL ─────────────────────────────────────
+        const ind  = analysis.indicators;
+        const tpsl = calcTPSL(this.config.exitMode, price, true, ind);
+
+        // V6/V7 無三重確認時返回 null → 跳過入場
+        if (tpsl === null) {
           this.record({
             symbol, action: 'buy', price, qty: 0, reason: buyReason, score: buyScore,
-            result: 'skipped', message: 'V6：無三重確認信號，跳過',
+            result: 'skipped', message: `${this.config.exitMode.toUpperCase()}：無三重確認信號，跳過`,
           });
           return;
         }
-        const effectivePct = longConfirmed ? this.config.positionPct : this.config.positionPct * 0.5;
-        buyReason += longConfirmed ? ' | 🔒全確認' : ' | ⚡部分確認';
 
-        // 計算倉位（全確認 = 100% positionPct，部分確認 = 50%）
-        const qty = Math.floor(
-          (account.balance * effectivePct) / price * 10_000
-        ) / 10_000;
+        // V6/V7 依確認強度調整倉位：全確認 100%，部分確認 50%
+        let effectivePct = this.config.positionPct;
+        if (this.config.exitMode === 'v6' || this.config.exitMode === 'v7') {
+          const longConfirmed = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
+          effectivePct = longConfirmed ? this.config.positionPct : this.config.positionPct * 0.5;
+          buyReason += longConfirmed ? ' | 🔒全確認' : ' | ⚡部分確認';
+        }
+
+        const qty = Math.floor((account.balance * effectivePct) / price * 10_000) / 10_000;
 
         if (qty > 0 && account.balance >= qty * price * 1.001) {
           const result = await this.executeAndRecord(
-            { symbol, type: 'buy', price, reason: buyReason, confidence: buyScore },
-            qty,
-            'buy',
-            buyReason,
-            buyScore,
+            { symbol, type: 'buy', price, reason: buyReason, confidence: buyScore,
+              stopLoss: tpsl.sl, takeProfit: tpsl.tp },
+            qty, 'buy', buyReason, buyScore,
           );
           if (result === 'success') {
             this.lastBuyTs.set(symbol, Date.now());
