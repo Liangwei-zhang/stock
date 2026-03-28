@@ -1,5 +1,5 @@
-import { query, queryOne, transaction } from '../db/pool.js';
-import { sendEmail } from '../services/emailService.js';
+import { query, queryOne, transaction } from './db/pool.js';
+import { sendEmail } from './services/emailService.js';
 
 const BATCH_SIZE = 50;
 const POLL_INTERVAL_MS = 2_000;
@@ -105,5 +105,5 @@ export async function startEmailWorker(): Promise<void> {
 
 // 若直接執行此文件則啟動 worker
 if (process.argv[1]?.endsWith('email-worker.ts') || process.argv[1]?.endsWith('email-worker.js')) {
-  import('../db/pool.js').then(() => startEmailWorker());
+  import('./db/pool.js').then(() => startEmailWorker());
 }
