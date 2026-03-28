@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { config, corsOrigins } from './core/config.js';
 import { blacklistMiddleware } from './middleware/rateLimiter.js';
+import { requestLogger } from './core/monitoring.js';
 import healthRouter       from './routes/health.js';
+import monitoringRouter   from './routes/monitoring.js';
 import authRouter         from './routes/auth.js';
 import accountRouter      from './routes/account.js';
 import watchlistRouter    from './routes/watchlist.js';
@@ -29,8 +31,12 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // ── 黑名單 ──
 app.use(blacklistMiddleware);
 
+// ── 請求日誌 + Metrics（Layer 6）──
+app.use(requestLogger);
+
 // ── 路由 ──
 app.use('/health',             healthRouter);
+app.use('/api/monitoring',     monitoringRouter);
 app.use('/api/auth',           authRouter);
 app.use('/api/account',        accountRouter);
 app.use('/api/watchlist',      watchlistRouter);

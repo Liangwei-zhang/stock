@@ -18,6 +18,7 @@ const envSchema = z.object({
   EMAIL_FROM:          z.string().email().default('noreply@example.com'),
   EMAIL_FROM_NAME:     z.string().default('Stock Signal'),
   CORS_ORIGINS:        z.string().default(''),
+  INTERNAL_TOKEN:      z.string().optional(), // /api/monitoring 端點的內部 Bearer Token
 });
 
 function parseConfig() {
