@@ -70,7 +70,7 @@ export async function sendEmail(params: SendParams): Promise<void> {
 export async function sendVerificationCode(email: string, code: string): Promise<void> {
   await sendEmail({
     to: email,
-    subject: `您的登入驗證碼 ${code}`,
+    subject: `您的 Stock Signal 登入驗證碼`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a1a1a">Stock Signal — 登入驗證碼</h2>

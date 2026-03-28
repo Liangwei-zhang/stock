@@ -70,7 +70,7 @@ services:
       redis-server
         --appendonly yes
         --maxmemory 512mb
-        --maxmemory-policy allkeys-lru
+        --maxmemory-policy allkeys-lfu
         --save 60 1000
     volumes:
       - redis_data:/data

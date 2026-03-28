@@ -8,10 +8,11 @@ RUN npm run build
 RUN npx tsc -p tsconfig.server.json
 
 FROM node:20-alpine
+ENV NODE_ENV=production
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --production=true
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-server ./dist-server
 EXPOSE 3000
-CMD ["node", "dist-server/api.js"]
+CMD ["node", "--enable-source-maps", "dist-server/api.js"]
