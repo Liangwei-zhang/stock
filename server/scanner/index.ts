@@ -74,8 +74,8 @@ async function fetchYahooHistory(symbol: string): Promise<Bar[]> {
  */
 async function fetchPrice(symbol: string): Promise<number | null> {
   const ck = `price:${symbol}`;
-  const cached = getCache<number>(ck);
-  if (cached !== undefined) return cached;
+  const cached = await getCache(ck);
+  if (cached !== null) return cached as number;
   try {
     const json = await yahooChartRequest(symbol, 'interval=1d&range=1d');
     const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice as number | undefined;
@@ -94,8 +94,8 @@ async function fetchPrice(symbol: string): Promise<number | null> {
  */
 async function fetchOHLCV(symbol: string): Promise<Bar[]> {
   const ck = `ohlcv:${symbol}`;
-  const cached = getCache<Bar[]>(ck);
-  if (cached) return cached;
+  const cached = await getCache(ck);
+  if (cached) return cached as Bar[];
 
   try {
     const rows = await query<{ ts: string; o: string; h: string; l: string; c: string; v: string }>(

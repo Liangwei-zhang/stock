@@ -22,7 +22,7 @@ router.get(
   '/',
   validate(searchQuerySchema, 'query'),
   async (req, res) => {
-    const { q, type, limit } = req.query as z.infer<typeof searchQuerySchema>;
+    const { q, type, limit } = req.query as unknown as z.infer<typeof searchQuerySchema>;
 
     const key = cacheKey('search', { q: q.toUpperCase(), type, limit });
 
