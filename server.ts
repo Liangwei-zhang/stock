@@ -521,8 +521,17 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.get('*', async (req, res) => {
+// 使用 app.use（非 app.get）以攔截所有 HTTP 方法，
+// 確保 POST/PUT/DELETE 打到不存在的 API 路由時也回傳 JSON，而非 SPA HTML。
+app.use('*', async (req, res) => {
+  // 後端路徑（/api /db /alerts 等）一律回 JSON 404
   if (FRONTEND_EXCLUDED_PREFIXES.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  // 非 GET/HEAD 請求不應打到前端 SPA 路由
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.status(404).json({ error: 'Not found' });
     return;
   }

@@ -102,6 +102,12 @@ export function useApi() {
       const data = await res.json().catch(() => ({}));
       throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
     }
+    // 若 Content-Type 不是 JSON（例如 SPA fallback 回傳了 HTML），
+    // 拋出明確錯誤，避免 res.json() 產生難以定位的 SyntaxError。
+    const ct = res.headers.get('content-type') ?? '';
+    if (!ct.includes('application/json') && !ct.includes('text/plain')) {
+      throw new Error('Server returned non-JSON response — make sure the backend is running.');
+    }
     return res.json() as Promise<T>;
   };
 }
