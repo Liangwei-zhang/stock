@@ -43,7 +43,7 @@ router.get('/', asyncHandler(async (req, res) => {
      ORDER BY w.created_at DESC`,
     [userId]
   );
-  res.json({ items: rows });
+  res.json(rows);
 }));
 
 /** POST /api/watchlist */
