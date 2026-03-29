@@ -147,37 +147,37 @@ export interface SimUserState {
 const DEFAULT_USERS: SimulatedUser[] = [
   {
     id: 'bull_wang',
-    name: '王大牛',
+    name: 'Ethan Bull',
     emoji: '🐂',
-    description: '坚定多头，只做买入信号，顺势重仓，止损宽松',
+    description: 'Long-only trend follower with larger size and wider stops',
     strategy: PRESET_STRATEGIES.bull,
   },
   {
     id: 'bear_li',
-    name: '李空熊',
+    name: 'Mason Bear',
     emoji: '🐻',
-    description: '专注做空，只做卖出信号，逆行者',
+    description: 'Short-only trader focused on sell signals and downside moves',
     strategy: PRESET_STRATEGIES.bear,
   },
   {
     id: 'conservative_chen',
-    name: '陈稳健',
+    name: 'Olivia Guard',
     emoji: '🦉',
-    description: '严苛条件，必须三重确认，小仓轻量，最低回撤',
+    description: 'Strict filters, triple confirmation, smaller size, lower drawdown',
     strategy: PRESET_STRATEGIES.conservative,
   },
   {
     id: 'scalper_zhang',
-    name: '张短线',
+    name: 'Ava Scalper',
     emoji: '⚡',
-    description: '低阈值高频出入，快止盈，最多持仓 6 个更新周期',
+    description: 'Low-threshold, faster entries and exits, max hold of 6 refresh cycles',
     strategy: PRESET_STRATEGIES.scalper,
   },
   {
     id: 'contrarian_zhou',
-    name: '周逆势',
+    name: 'Noah Contra',
     emoji: '🦊',
-    description: '逆向交易者，顶部信号买入，底部信号做空，高风险高回报',
+    description: 'Contrarian trader using top and bottom calls for higher risk and reward',
     strategy: PRESET_STRATEGIES.contrarian,
   },
 ];
@@ -244,10 +244,10 @@ function persist(state: SimUserState): void {
       strategy:       state.user.strategy,
     };
     localStorage.setItem(LS_KEY_PREFIX + state.user.id, JSON.stringify(s));
-  } catch (e) { console.warn('[simulatedUsers] persist 失敗:', e); }
+  } catch (e) { console.warn('[simulatedUsers] persist failed:', e); }
 }
 
-/** 節流持久化：每個用戶最多每 5 秒寫一次 localStorage */
+/** Throttled persistence: each user writes to localStorage at most once every 5 seconds. */
 const _throttleTimers = new Map<string, ReturnType<typeof setTimeout>>();
 function persistThrottled(state: SimUserState): void {
   const key = state.user.id;
@@ -269,7 +269,7 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
     const raw = localStorage.getItem(LS_KEY_PREFIX + user.id);
     if (!raw) return blank;
     const s: PersistedUserState = JSON.parse(raw);
-    // 若持久化中有自定義策略，則覆蓋預設值
+    // Preserve custom strategies from persisted state.
     const restoredUser = s.strategy
       ? { ...user, strategy: s.strategy }
       : user;
@@ -284,7 +284,7 @@ function restore(user: SimulatedUser, initBalance: number): SimUserState {
       log:            s.log ?? [],
       paused:         s.paused ?? false,
     };
-  } catch (e) { console.warn('[simulatedUsers] restore 失敗:', e); return blank; }
+  } catch (e) { console.warn('[simulatedUsers] restore failed:', e); return blank; }
 }
 
 // ─── 决策引擎 ─────────────────────────────────────────────────────────────────
@@ -305,48 +305,47 @@ function decide(
   if (pos) {
     pos.holdCount++;
 
-    // 超时平仓
+    // Timeout exit
     if (strategy.maxHoldPeriods > 0 && pos.holdCount >= strategy.maxHoldPeriods) {
-      closeTrade(state, symbol, price, 'timeout', `持仓超時 ${pos.holdCount} 個周期`);
+      closeTrade(state, symbol, price, 'timeout', `Timed out after ${pos.holdCount} cycles`);
       return;
     }
-    // 止损
-    if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', `止損觸發`); return; }
-    if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', `止損觸發`); return; }
-    // 止盈
-    if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', `止盈觸發`); return; }
-    if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', `止盈觸發`); return; }
+    // Stop loss
+    if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', 'Stop loss hit'); return; }
+    if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', 'Stop loss hit'); return; }
+    // Take profit
+    if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); return; }
+    if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); return; }
 
-    // 有持仓时检查反向平仓信号
+    // Close on reverse signal while holding a position.
     if (pos.side === 'long' && (sellSignal.signal && sellSignal.score >= strategy.minSellScore)) {
-      closeTrade(state, symbol, price, 'signal', `反向賣出信號 (${sellSignal.score}分)`);
+      closeTrade(state, symbol, price, 'signal', `Reverse sell signal (${sellSignal.score})`);
       return;
     }
     if (pos.side === 'short' && (buySignal.signal && buySignal.score >= strategy.minBuyScore)) {
-      closeTrade(state, symbol, price, 'signal', `反向買入信號 (${buySignal.score}分)`);
+      closeTrade(state, symbol, price, 'signal', `Reverse buy signal (${buySignal.score})`);
       return;
     }
-    // 持仓中，无退出条件 → 持有
-    addLog(state, { ts: Date.now(), symbol, action: 'hold', price, reason: `持倉中 (SL${pos.stopLoss.toFixed(2)} TP${pos.takeProfit.toFixed(2)})` });
+    addLog(state, { ts: Date.now(), symbol, action: 'hold', price, reason: `Holding (SL ${pos.stopLoss.toFixed(2)} / TP ${pos.takeProfit.toFixed(2)})` });
     persistThrottled(state);
     return;
   }
 
-  // 检查暂停
+  // Risk pause
   if (state.paused) {
     const dd = calcDrawdown(state, prices);
     if (dd < strategy.pauseOnDrawdown * 0.7) {
       state.paused = false; // 回撤回复到阈值70%时解除
     } else {
-      addLog(state, { ts: Date.now(), symbol, action: 'paused', price, reason: `風控暫停中（回撤 ${(dd*100).toFixed(1)}%）` });
+      addLog(state, { ts: Date.now(), symbol, action: 'paused', price, reason: `Risk pause (${(dd*100).toFixed(1)}% drawdown)` });
       persistThrottled(state);
       return;
     }
   }
 
-  // 检查并发持仓上限
+  // Max concurrent positions
   if (state.positions.size >= strategy.maxConcurrent) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: `已達最大持倉數 ${strategy.maxConcurrent}` });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: `Max positions reached (${strategy.maxConcurrent})` });
     persistThrottled(state);
     return;
   }
@@ -356,62 +355,62 @@ function decide(
   let wantShort = false;
   let signalInfo = '';
 
-  // 三重确认判断
+  // Triple confirmation gate
   const hasSFP   = prediction.signals.some(s => s.includes('SFP'));
   const hasCHOCH = prediction.signals.some(s => s.includes('CHOCH'));
   const hasFVG   = prediction.signals.some(s => s.includes('FVG'));
   const tripleOK = !strategy.requireTriple || (hasSFP && hasCHOCH && hasFVG);
 
-  // 顺势判断
+  // Trend filter
   const bullTrend = indicators.ema9 > indicators.ema21;
   const bearTrend = indicators.ema9 < indicators.ema21;
 
-  // 买入信号
+  // Buy signal
   if (strategy.acceptSignals.includes('buy') && buySignal.signal && buySignal.score >= strategy.minBuyScore) {
     if (tripleOK && (!strategy.onlyWithTrend || bullTrend)) {
       wantLong  = !strategy.contrarian;
       wantShort = strategy.contrarian;
-      signalInfo = `買入信號 ${buySignal.score}分 | ${buySignal.reasons[0] ?? ''}`;
+      signalInfo = `Buy signal ${buySignal.score}`;
     }
   }
-  // 底部预测
+  // Bottom prediction
   if (!wantLong && !wantShort && strategy.acceptSignals.includes('bottom')
       && prediction.type === 'bottom' && prediction.probability >= strategy.minPredProb) {
     if (tripleOK && (!strategy.onlyWithTrend || bullTrend)) {
       wantLong  = !strategy.contrarian;
       wantShort = strategy.contrarian;
-      signalInfo = `底部預測 ${(prediction.probability*100).toFixed(0)}% | ${prediction.recommendation}`;
+      signalInfo = `Bottom prediction ${(prediction.probability*100).toFixed(0)}%`;
     }
   }
-  // 卖出信号
+  // Sell signal
   if (!wantLong && !wantShort && strategy.acceptSignals.includes('sell')
       && sellSignal.signal && sellSignal.score >= strategy.minSellScore) {
     if (tripleOK && (!strategy.onlyWithTrend || bearTrend)) {
       wantShort = !strategy.contrarian;
       wantLong  = strategy.contrarian;
-      signalInfo = `賣出信號 ${sellSignal.score}分 | ${sellSignal.reasons[0] ?? ''}`;
+      signalInfo = `Sell signal ${sellSignal.score}`;
     }
   }
-  // 顶部预测
+  // Top prediction
   if (!wantLong && !wantShort && strategy.acceptSignals.includes('top')
       && prediction.type === 'top' && prediction.probability >= strategy.minPredProb) {
     if (tripleOK && (!strategy.onlyWithTrend || bearTrend)) {
       wantShort = !strategy.contrarian;
       wantLong  = strategy.contrarian;
-      signalInfo = `頂部預測 ${(prediction.probability*100).toFixed(0)}% | ${prediction.recommendation}`;
+      signalInfo = `Top prediction ${(prediction.probability*100).toFixed(0)}%`;
     }
   }
 
   if (!wantLong && !wantShort) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '無符合條件的信號' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'No qualifying signal' });
     persistThrottled(state);
     return;
   }
 
-  // 计算仓位
+  // Position sizing
   const capital  = state.balance * strategy.positionPct;
   if (capital < price * 0.001) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '餘額不足' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'Insufficient balance' });
     persistThrottled(state);
     return;
   }
@@ -420,7 +419,7 @@ function decide(
   const fee     = total * FEE_RATE;
 
   if (state.balance < total + fee) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '餘額不足' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'Insufficient balance' });
     persistThrottled(state);
     return;
   }
@@ -435,7 +434,7 @@ function decide(
     });
     addLog(state, { ts: Date.now(), symbol, action: 'buy', price, reason: signalInfo, score: buySignal.score || Math.round(prediction.probability * 100) });
   } else {
-    // 模拟做空：借券卖出，锁定保证金
+    // Simulated short: borrow shares and lock margin.
     state.balance -= total * 0.3 + fee; // 30% 保证金
     state.positions.set(symbol, {
       symbol, side: 'short', qty, entryPrice: price,
@@ -491,7 +490,7 @@ function closeTrade(
   };
 
   state.trades.unshift(trade);
-  // 上限 500 筆，防止 localStorage 容量耗盡（5 用戶 × 500 筆 × ~200B ≈ 500KB）
+  // Cap trade history to avoid exhausting localStorage capacity.
   if (state.trades.length > 500) state.trades.pop();
   state.positions.delete(symbol);
 
@@ -505,7 +504,7 @@ function closeTrade(
     reason: `${reason} | PnL ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`,
   });
 
-  // 刷新统计
+  // Refresh statistics
   state.tradeStats = calcTradeStats(
     state.trades.map(t => ({
       id: t.id, symbol: t.symbol, side: t.side === 'buy' ? 'buy' : 'sell',
@@ -516,13 +515,13 @@ function closeTrade(
     }))
   );
 
-  // 检查回撤暂停
+  // Pause on drawdown breach
   const dd = calcDrawdown(state);
   if (dd >= state.user.strategy.pauseOnDrawdown) {
     state.paused = true;
     addLog(state, {
       ts: Date.now(), symbol, action: 'paused', price: exitPrice,
-      reason: `回撤達 ${(dd*100).toFixed(1)}% ≥ 閾值 ${(state.user.strategy.pauseOnDrawdown*100).toFixed(0)}%，暫停交易`,
+      reason: `Drawdown ${(dd*100).toFixed(1)}% >= ${(state.user.strategy.pauseOnDrawdown*100).toFixed(0)}% threshold, trading paused`,
     });
   }
 
@@ -561,13 +560,13 @@ class SimulatedUserService {
     }
   }
 
-  /** App.tsx 每次价格更新后调用 */
+  /** Called after each market update. */
   onMarketUpdate(analyses: Map<string, StockAnalysis>, prices: Map<string, number>): void {
     if (!this.enabled) return;
 
     for (const state of this.states.values()) {
       for (const [symbol, analysis] of analyses) {
-        // 如果用户设置了标的白名单，只处理白名单内的标的
+        // If a symbol whitelist is configured, only process those symbols.
         if (state.allowedSymbols.length > 0 && !state.allowedSymbols.includes(symbol)) continue;
         try {
           decide(state, symbol, analysis, prices);
@@ -579,17 +578,17 @@ class SimulatedUserService {
     this.onUpdate?.();
   }
 
-  /** 价格更新时检查持仓止损止盈 */
+  /** Recheck stop loss and take profit levels on price updates. */
   checkPositions(prices: Map<string, number>): void {
     if (!this.enabled) return;
     for (const state of this.states.values()) {
       for (const [symbol, pos] of state.positions) {
         const price = prices.get(symbol);
         if (!price) continue;
-        if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  '止損'); }
-        if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '止盈'); }
-        if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  '止損'); }
-        if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '止盈'); }
+        if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  'Stop loss hit'); }
+        if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); }
+        if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  'Stop loss hit'); }
+        if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); }
       }
     }
     this.onUpdate?.();

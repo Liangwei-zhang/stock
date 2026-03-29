@@ -26,7 +26,7 @@ export async function fetchPolygonHistory(
   to: string
 ): Promise<StockData[]> {
   if (!API_KEY) {
-    throw new Error('Polygon.io API Key 未設置');
+    throw new Error('Polygon.io API key is not configured');
   }
 
   const url = `${BASE_URL}/v2/aggs/ticker/${symbol}/range/1/day/${from}/${to}?adjusted=true&sort=asc&apiKey=${API_KEY}`;
@@ -68,7 +68,7 @@ export async function fetchPolygonQuote(symbol: string): Promise<{
   volume: number;
 } | null> {
   if (!API_KEY) {
-    throw new Error('Polygon.io API Key 未設置');
+    throw new Error('Polygon.io API key is not configured');
   }
 
   const url = `${BASE_URL}/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${API_KEY}`;
@@ -102,7 +102,7 @@ export async function searchPolygonSymbols(query: string): Promise<{
   exchange: string;
 }[]> {
   if (!API_KEY) {
-    throw new Error('Polygon.io API Key 未設置');
+    throw new Error('Polygon.io API key is not configured');
   }
 
   const url = `${BASE_URL}/v3/reference/tickers?search=${encodeURIComponent(query)}&active=true&apiKey=${API_KEY}`;

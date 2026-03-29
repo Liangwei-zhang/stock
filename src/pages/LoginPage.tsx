@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Form, Input, message, Steps, Typography } from 'antd';
 import { MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth';
+import { LOCALE_NATIVE_LABELS, SUPPORTED_LOCALES, useI18n } from '../i18n';
 
 const { Title, Text } = Typography;
 
@@ -24,6 +25,7 @@ interface Props {
 
 export default function LoginPage({ onSuccess }: Props) {
   const { login } = useAuth();
+  const { locale, setLocale, t } = useI18n();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,7 +53,7 @@ export default function LoginPage({ onSuccess }: Props) {
       });
       const data = await res.json() as { message?: string; error?: string; devCode?: string };
       if (!res.ok) {
-        message.error(data.error ?? '發送失敗，請稍後重試');
+        message.error(data.error ?? t('login.message.sendLater'));
         return;
       }
       setEmail(values.email);
@@ -60,12 +62,12 @@ export default function LoginPage({ onSuccess }: Props) {
       startCountdown();
       if (data.devCode) {
         codeForm.setFieldsValue({ code: data.devCode });
-        message.info('未配置郵件服務，驗證碼已自動填入');
+        message.info(t('login.message.devAutofill'));
       } else {
-        message.success('驗證碼已發送到您的郵箱');
+        message.success(t('login.message.sent'));
       }
     } catch {
-      message.error('網絡錯誤，請稍後重試');
+      message.error(t('login.message.network'));
     } finally {
       setLoading(false);
     }
@@ -77,17 +79,22 @@ export default function LoginPage({ onSuccess }: Props) {
       const res = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: values.code }),
+        body: JSON.stringify({
+          email,
+          code: values.code,
+          locale,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       });
       const data = await res.json() as LoginResponse & { error?: string };
       if (!res.ok) {
-        message.error((data as { error?: string }).error ?? '驗證失敗');
+        message.error((data as { error?: string }).error ?? t('login.message.verifyFailed'));
         return;
       }
       login(data.token, data.user);
       onSuccess(data.user.isNew);
     } catch {
-      message.error('網絡錯誤，請稍後重試');
+      message.error(t('login.message.network'));
     } finally {
       setLoading(false);
     }
@@ -98,10 +105,39 @@ export default function LoginPage({ onSuccess }: Props) {
       <div className="mobile-auth-card">
         {/* Logo */}
         <div className="mobile-auth-hero">
-          <div className="mobile-eyebrow">Realtime Signal Hub</div>
+          <div className="mobile-eyebrow">{t('login.eyebrow')}</div>
           <div className="mobile-auth-icon">📈</div>
-          <Title level={2} className="mobile-page-title" style={{ fontSize: 34, margin: 0 }}>Stock Signal</Title>
-          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>2026 風格的行動化交易訂閱中樞，登入後即可管理關注、持倉與通知節奏。</Text>
+          <Title level={2} className="mobile-page-title" style={{ fontSize: 34, margin: 0 }}>{t('login.title')}</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>{t('login.subtitle')}</Text>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <Text className="mobile-form-footnote" style={{ margin: 0 }}>{t('login.languageLabel')}</Text>
+          {SUPPORTED_LOCALES.map(item => (
+            <Button
+              key={item}
+              size="small"
+              type={item === locale ? 'primary' : 'default'}
+              onClick={() => setLocale(item)}
+            >
+              {LOCALE_NATIVE_LABELS[item]}
+            </Button>
+          ))}
+        </div>
+
+        <div className="mobile-feature-grid">
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">60s</div>
+            <div className="mobile-feature-label">{t('login.feature.fastAccess')}</div>
+          </div>
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">Mail</div>
+            <div className="mobile-feature-label">{t('login.feature.passwordless')}</div>
+          </div>
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">Sync</div>
+            <div className="mobile-feature-label">{t('login.feature.sync')}</div>
+          </div>
         </div>
 
         {/* 步驟指示 */}
@@ -110,8 +146,8 @@ export default function LoginPage({ onSuccess }: Props) {
           size="small"
           style={{ marginBottom: 28 }}
           items={[
-            { title: '輸入郵箱', icon: <MailOutlined /> },
-            { title: '驗證碼登入', icon: <SafetyOutlined /> },
+            { title: t('login.step.email'), icon: <MailOutlined /> },
+            { title: t('login.step.verify'), icon: <SafetyOutlined /> },
           ]}
         />
 
@@ -119,19 +155,20 @@ export default function LoginPage({ onSuccess }: Props) {
           <Form onFinish={handleSendCode} layout="vertical">
             <Form.Item
               name="email"
-              label="郵箱地址"
+              label={t('login.emailLabel')}
               rules={[
-                { required: true, message: '請輸入郵箱' },
-                { type: 'email', message: '請輸入有效的郵箱地址' },
+                { required: true, message: t('login.emailRequired') },
+                { type: 'email', message: t('login.emailInvalid') },
               ]}
             >
               <Input
                 size="large"
                 prefix={<MailOutlined />}
-                placeholder="your@email.com"
+                placeholder={t('login.emailPlaceholder')}
                 autoComplete="email"
               />
             </Form.Item>
+            <Text className="mobile-form-footnote">{t('login.emailFootnote')}</Text>
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="primary"
@@ -140,7 +177,7 @@ export default function LoginPage({ onSuccess }: Props) {
                 block
                 loading={loading}
               >
-                發送驗證碼
+                {t('login.sendCode')}
               </Button>
             </Form.Item>
           </Form>
@@ -149,25 +186,25 @@ export default function LoginPage({ onSuccess }: Props) {
         {step === 'code' && (
           <Form form={codeForm} onFinish={handleVerify} layout="vertical">
             <div className="mobile-info-banner">
-              已發送到 <strong>{email}</strong>
+              {t('login.codeSentTo', { email })}
             </div>
             {devCode && (
               <div className="mobile-highlight-banner">
-                ⚠️ 未配置郵件服務，驗證碼：<strong style={{ letterSpacing: 4 }}>{devCode}</strong>
+                ⚠️ {t('login.devCodeBanner', { code: devCode })}
               </div>
             )}
             <Form.Item
               name="code"
-              label="6 位驗證碼"
+              label={t('login.codeLabel')}
               rules={[
-                { required: true, message: '請輸入驗證碼' },
-                { len: 6, message: '驗證碼為 6 位數字' },
+                { required: true, message: t('login.codeRequired') },
+                { len: 6, message: t('login.codeLength') },
               ]}
             >
               <Input
                 size="large"
                 prefix={<SafetyOutlined />}
-                placeholder="123456"
+                placeholder={t('login.codePlaceholder')}
                 maxLength={6}
                 style={{ letterSpacing: 6, textAlign: 'center' }}
                 autoComplete="one-time-code"
@@ -181,9 +218,10 @@ export default function LoginPage({ onSuccess }: Props) {
                 block
                 loading={loading}
               >
-                登入
+                {t('login.signIn')}
               </Button>
             </Form.Item>
+            <Text className="mobile-form-footnote">{t('login.codeFootnote')}</Text>
             <Button
               type="link"
               block
@@ -193,10 +231,15 @@ export default function LoginPage({ onSuccess }: Props) {
                 setCountdown(0);
               }}
             >
-              {countdown > 0 ? `重新發送（${countdown}s）` : '← 重新輸入郵箱'}
+              {countdown > 0 ? t('login.resend', { seconds: countdown }) : t('login.useAnotherEmail')}
             </Button>
           </Form>
         )}
+
+        <div className="mobile-helper-list">
+          <div className="mobile-helper-item">{t('login.helper.syncPrefs')}</div>
+          <div className="mobile-helper-item">{t('login.helper.devMode')}</div>
+        </div>
       </div>
     </div>
   );

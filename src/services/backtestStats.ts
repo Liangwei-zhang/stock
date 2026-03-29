@@ -258,7 +258,7 @@ export function runBacktest(
       period:    `${data.length} bars`,
       totalBars: data.length,
       signalStats: { totalSignals: 0, buySignals: 0, sellSignals: 0, predTopSignals: 0, predBotSignals: 0, tripleConfirmed: 0, highConfidence: 0 },
-      summary: '數據不足，無法回測（需至少 ' + (lookbackBars + holdBars + 10) + ' 根 K 線）',
+      summary: 'Insufficient data for backtest (need at least ' + (lookbackBars + holdBars + 10) + ' bars)',
     };
   }
 
@@ -325,11 +325,11 @@ export function runBacktest(
 
   const accPct = signalAccuracy !== undefined ? `${(signalAccuracy * 100).toFixed(1)}%` : 'N/A';
   const summary = [
-    `回測 ${data.length} 根K線 / 約 ${dayCount} 天`,
-    `共 ${signals.length} 個信號（買入:${buyCount} 賣出:${sellCount} 頂:${topCount} 底:${botCount}）`,
-    `信號方向準確率: ${accPct}`,
-    tripleCount > 0 ? `三重確認信號 ${tripleCount} 次（SFP+CHOCH+FVG）` : '',
-    highConfCount > 0 ? `高置信度信號 ${highConfCount} 次（>80%）` : '',
+    `Backtested ${data.length} bars / about ${dayCount} days`,
+    `${signals.length} total signals (buy:${buyCount} sell:${sellCount} top:${topCount} bottom:${botCount})`,
+    `Directional accuracy: ${accPct}`,
+    tripleCount > 0 ? `Triple-confirmed signals: ${tripleCount} (SFP+CHOCH+FVG)` : '',
+    highConfCount > 0 ? `High-confidence signals: ${highConfCount} (>80%)` : '',
   ].filter(Boolean).join('\n');
 
   return {
@@ -421,7 +421,7 @@ export function runPluginBacktest(
           bottom: emptyPluginSignalStats(),
         },
       },
-      summary: `插件 ${plugin.name}：數據不足，無法回測（需至少 ${lookbackBars + holdBars + 10} 根 K 線）`,
+      summary: `Plugin ${plugin.name}: insufficient data for backtest (need at least ${lookbackBars + holdBars + 10} bars)`,
     };
   }
 
@@ -488,10 +488,10 @@ export function runPluginBacktest(
   };
 
   const signalParts = [
-    byType.buy.count > 0 ? `買入 ${byType.buy.count}` : '',
-    byType.sell.count > 0 ? `賣出 ${byType.sell.count}` : '',
-    byType.top.count > 0 ? `頂部 ${byType.top.count}` : '',
-    byType.bottom.count > 0 ? `底部 ${byType.bottom.count}` : '',
+    byType.buy.count > 0 ? `Buy ${byType.buy.count}` : '',
+    byType.sell.count > 0 ? `Sell ${byType.sell.count}` : '',
+    byType.top.count > 0 ? `Top ${byType.top.count}` : '',
+    byType.bottom.count > 0 ? `Bottom ${byType.bottom.count}` : '',
   ].filter(Boolean).join(' / ');
 
   return {
@@ -502,11 +502,11 @@ export function runPluginBacktest(
     totalBars: data.length,
     stats,
     summary: [
-      `${plugin.name} 回測完成`,
-      `總信號 ${stats.totalSignals}，勝率 ${(stats.winRate * 100).toFixed(1)}%`,
-      `平均方向收益 ${(stats.avgReturn * 100).toFixed(2)}% / ${holdBars} 根 K 線`,
-      signalParts ? `信號分佈：${signalParts}` : '',
-      stats.highConfidence > 0 ? `高置信度信號 ${stats.highConfidence} 次` : '',
+      `${plugin.name} backtest complete`,
+      `Total signals ${stats.totalSignals}, win rate ${(stats.winRate * 100).toFixed(1)}%`,
+      `Average directional return ${(stats.avgReturn * 100).toFixed(2)}% over ${holdBars} bars`,
+      signalParts ? `Signal mix: ${signalParts}` : '',
+      stats.highConfidence > 0 ? `High-confidence signals ${stats.highConfidence}` : '',
     ].filter(Boolean).join('\n'),
   };
 }
@@ -625,7 +625,7 @@ export function runPluginTradeBacktest(
       finalBalance: initialBalance,
       equityValue: initialBalance,
       totalReturnPct: 0,
-      summary: `插件 ${plugin.name}：數據不足，無法做真實交易回測（需至少 ${lookbackBars + 10} 根 K 線）`,
+      summary: `Plugin ${plugin.name}: insufficient data for trade backtest (need at least ${lookbackBars + 10} bars)`,
     };
   }
 
@@ -769,13 +769,13 @@ export function runPluginTradeBacktest(
     totalReturnPct,
     summary: tradeStats
       ? [
-          `${plugin.name} 真實交易回測完成`,
-          `交易 ${tradeStats.totalTrades} 筆，勝率 ${(tradeStats.winRate * 100).toFixed(1)}%`,
-          `總盈虧 ${tradeStats.totalPnL >= 0 ? '+' : ''}$${tradeStats.totalPnL.toFixed(2)}`,
-          `盈虧比 ${tradeStats.profitFactor.toFixed(2)}，Sharpe ${tradeStats.sharpeRatio.toFixed(2)}`,
-          `最大回撤 ${(tradeStats.maxDrawdown * 100).toFixed(1)}%，資產變化 ${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`,
+          `${plugin.name} trade backtest complete`,
+          `Trades ${tradeStats.totalTrades}, win rate ${(tradeStats.winRate * 100).toFixed(1)}%`,
+          `Total PnL ${tradeStats.totalPnL >= 0 ? '+' : ''}$${tradeStats.totalPnL.toFixed(2)}`,
+          `Profit factor ${tradeStats.profitFactor.toFixed(2)}, Sharpe ${tradeStats.sharpeRatio.toFixed(2)}`,
+          `Max drawdown ${(tradeStats.maxDrawdown * 100).toFixed(1)}%, equity change ${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`,
         ].join('\n')
-      : `${plugin.name} 真實交易回測未產生任何平倉交易`,
+      : `${plugin.name} trade backtest produced no closed trades`,
   };
 }
 
@@ -805,30 +805,30 @@ export function rankPluginsByTradeBacktest(
 
 export function formatTradeStats(stats: TradeStats): Record<string, string> {
   return {
-    '总交易次数':     `${stats.totalTrades}`,
-    '胜率':           `${(stats.winRate * 100).toFixed(1)}%`,
-    '盈亏比':         `${stats.profitFactor.toFixed(2)}`,
-    '期望值/笔':      `$${stats.expectancy.toFixed(2)}`,
-    '平均盈利':       `$${stats.avgWin.toFixed(2)}`,
-    '平均亏损':       `-$${stats.avgLoss.toFixed(2)}`,
-    '总盈亏':         `${stats.totalPnL >= 0 ? '+' : ''}$${stats.totalPnL.toFixed(2)}`,
-    '最大回撤':       `${(stats.maxDrawdown * 100).toFixed(1)}%`,
-    'Sharpe Ratio':   stats.sharpeRatio.toFixed(2),
-    'Calmar Ratio':   stats.calmarRatio.toFixed(2),
-    '止损平仓':       `${stats.byExitReason.stop_loss.count} 次`,
-    '止盈平仓':       `${stats.byExitReason.take_profit.count} 次`,
+    'Total Trades':    `${stats.totalTrades}`,
+    'Win Rate':        `${(stats.winRate * 100).toFixed(1)}%`,
+    'Profit Factor':   `${stats.profitFactor.toFixed(2)}`,
+    'Expectancy / Trade': `$${stats.expectancy.toFixed(2)}`,
+    'Average Win':     `$${stats.avgWin.toFixed(2)}`,
+    'Average Loss':    `-$${stats.avgLoss.toFixed(2)}`,
+    'Total PnL':       `${stats.totalPnL >= 0 ? '+' : ''}$${stats.totalPnL.toFixed(2)}`,
+    'Max Drawdown':    `${(stats.maxDrawdown * 100).toFixed(1)}%`,
+    'Sharpe Ratio':    stats.sharpeRatio.toFixed(2),
+    'Calmar Ratio':    stats.calmarRatio.toFixed(2),
+    'Stop Exits':      `${stats.byExitReason.stop_loss.count}`,
+    'Target Exits':    `${stats.byExitReason.take_profit.count}`,
   };
 }
 
 export function formatPluginBacktestStats(stats: PluginBacktestStats): Record<string, string> {
   return {
-    '總信號數': `${stats.totalSignals}`,
-    '勝率': `${(stats.winRate * 100).toFixed(1)}%`,
-    '平均方向收益': `${(stats.avgReturn * 100).toFixed(2)}%`,
-    '高置信度信號': `${stats.highConfidence}`,
-    '買入勝率': `${(stats.byType.buy.winRate * 100).toFixed(1)}% (${stats.byType.buy.count})`,
-    '賣出勝率': `${(stats.byType.sell.winRate * 100).toFixed(1)}% (${stats.byType.sell.count})`,
-    '頂部預測勝率': `${(stats.byType.top.winRate * 100).toFixed(1)}% (${stats.byType.top.count})`,
-    '底部預測勝率': `${(stats.byType.bottom.winRate * 100).toFixed(1)}% (${stats.byType.bottom.count})`,
+    'Total Signals': `${stats.totalSignals}`,
+    'Win Rate': `${(stats.winRate * 100).toFixed(1)}%`,
+    'Average Directional Return': `${(stats.avgReturn * 100).toFixed(2)}%`,
+    'High-Confidence Signals': `${stats.highConfidence}`,
+    'Buy Win Rate': `${(stats.byType.buy.winRate * 100).toFixed(1)}% (${stats.byType.buy.count})`,
+    'Sell Win Rate': `${(stats.byType.sell.winRate * 100).toFixed(1)}% (${stats.byType.sell.count})`,
+    'Top Prediction Win Rate': `${(stats.byType.top.winRate * 100).toFixed(1)}% (${stats.byType.top.count})`,
+    'Bottom Prediction Win Rate': `${(stats.byType.bottom.winRate * 100).toFixed(1)}% (${stats.byType.bottom.count})`,
   };
 }

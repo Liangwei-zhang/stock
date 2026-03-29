@@ -124,26 +124,26 @@ export function exportHTML(report: AnalysisReport): void {
 <title>${report.symbol} 分析报表 — ${fmtDate(report.generatedAt)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, 'PingFang SC', sans-serif; background: #0d1117; color: #e6edf3; padding: 32px; }
-  @media print { body { background: #fff; color: #000; padding: 16px; } .no-print { display: none; } }
+  body { font-family: 'Aptos', 'Avenir Next', 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f7fcf8; color: #183024; padding: 32px; }
+  @media print { body { background: #fff; color: #183024; padding: 16px; } .no-print { display: none; } }
   h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-  h2 { font-size: 14px; font-weight: 500; color: #8b949e; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: .06em; }
-  .meta { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
+  h2 { font-size: 14px; font-weight: 500; color: #5f7a6a; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: .06em; }
+  .meta { color: #5f7a6a; font-size: 13px; margin-bottom: 24px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
-  .card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 16px; }
-  .card-title { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .card { background: #ffffff; border: 1px solid rgba(93, 187, 123, 0.18); border-radius: 10px; padding: 16px; }
+  .card-title { font-size: 12px; color: #5f7a6a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
   .price { font-size: 32px; font-weight: 700; }
   .change { font-size: 14px; margin-left: 8px; }
   .signal-score { font-size: 40px; font-weight: 800; }
   .reasons { margin-top: 8px; }
-  .reason { font-size: 12px; color: #8b949e; padding: 2px 0; }
+  .reason { font-size: 12px; color: #5f7a6a; padding: 2px 0; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #161b22; color: #8b949e; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #21262d; }
-  td { padding: 7px 10px; border-bottom: 1px solid #161b22; }
-  tr:hover td { background: rgba(255,255,255,.03); }
+  th { background: #f1fbf4; color: #5f7a6a; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(93, 187, 123, 0.18); }
+  td { padding: 7px 10px; border-bottom: 1px solid #eef7f1; }
+  tr:hover td { background: rgba(103, 201, 138, .06); }
   .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
   .pred-badge { display: inline-block; padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
-  .print-btn { position: fixed; bottom: 24px; right: 24px; padding: 10px 20px; background: #1890ff; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .print-btn { position: fixed; bottom: 24px; right: 24px; padding: 10px 20px; background: #67c98a; color: #183024; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -152,7 +152,7 @@ export function exportHTML(report: AnalysisReport): void {
   <button class="print-btn" onclick="window.print()">🖨 打印 / 存 PDF</button>
 </div>
 
-<h1>${report.symbol} &nbsp;<span style="font-size:16px;color:#8b949e">${report.name}</span></h1>
+<h1>${report.symbol} &nbsp;<span style="font-size:16px;color:#5f7a6a">${report.name}</span></h1>
 <div class="meta">
   生成时间：${fmtTs(report.generatedAt)} &nbsp;·&nbsp;
   算法：${report.pluginName} &nbsp;·&nbsp;

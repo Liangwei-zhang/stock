@@ -398,8 +398,8 @@ class AlertService {
     if (dup) return null;
 
     const icons:     Record<string, string> = { buy: '🟢', sell: '🔴', top: '🔺', bottom: '🔻' };
-    const typeLabel: Record<string, string> = { buy: '買入', sell: '賣出', top: '頂部', bottom: '底部' };
-    const lvLabel:   Record<string, string> = { high: '高', medium: '中', low: '低' };
+    const typeLabel: Record<string, string> = { buy: 'Buy', sell: 'Sell', top: 'Top', bottom: 'Bottom' };
+    const lvLabel:   Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
 
     // V6：無確認信號時跳過（不生成警報）
     const tpsl = calcTPSL(analysis.price, type, analysis.indicators);
@@ -412,10 +412,14 @@ class AlertService {
       level:     signal.level,
       price:     analysis.price,
       score:     signal.score,
-      reasons:   signal.reasons,
+      reasons:   [
+        `${typeLabel[type]} setup detected by automated analysis`,
+        `${lvLabel[signal.level]} confidence signal`,
+        tpsl.confirmationLevel === 'full' ? 'Full confirmation across required checks' : 'Partial confirmation across active checks',
+      ],
       timestamp: now,
       read:      false,
-      message:   `${icons[type]} ${analysis.symbol} ${typeLabel[type]}信號 [${lvLabel[signal.level]}] $${analysis.price.toFixed(2)} | ${signal.score}分 | ${tpsl.confirmationLevel === 'full' ? '全確認' : '部分確認'}`,
+      message:   `${icons[type]} ${analysis.symbol} ${typeLabel[type]} signal [${lvLabel[signal.level]}] $${analysis.price.toFixed(2)} | ${signal.score} pts | ${tpsl.confirmationLevel === 'full' ? 'Full Confirmation' : 'Partial Confirmation'}`,
       ...tpsl,
     };
 
@@ -425,26 +429,24 @@ class AlertService {
     // Push to server for external monitoring
     pushAlertToServer(alert);
 
-    // Send to Telegram via server（服務端統一發送，避免 CORS，Token 不暴露於前端）
+    // Send to Telegram via the server.
     const fmt = (v: number) => `$${v.toFixed(v >= 100 ? 2 : 4)}`;
-    // 買入/底部：高值 = 止盈目標；賣出/頂部：高值 = 風控點，低值 = 目標位
     const isLongAlert = type === 'buy' || type === 'bottom';
     const upperVal   = isLongAlert ? alert.takeProfit : alert.stopLoss;
     const lowerVal   = isLongAlert ? alert.stopLoss   : alert.takeProfit;
-    const upperLabel = isLongAlert ? '🎯 止盈' : '⚠️ 風控';
-    const lowerLabel = isLongAlert ? '🛡️ 止損' : '🎯 目標';
-    const confLabel = alert.confirmationLevel === 'full' ? '🔒 全確認' : '⚡ 部分確認';
+    const upperLabel = isLongAlert ? '🎯 Target' : '⚠️ Risk';
+    const lowerLabel = isLongAlert ? '🛡️ Stop' : '🎯 Target';
+    const confLabel = alert.confirmationLevel === 'full' ? '🔒 Full Confirmation' : '⚡ Partial Confirmation';
     const tgMsg =
-      `🚸 *股票預警*\n\n` +
-      `${icons[type]} *${analysis.symbol}* ${typeLabel[type]}信號\n` +
-      `等級：${lvLabel[signal.level]}  |  確認度：${confLabel}  |  評分：${signal.score}分\n` +
-      `價格：${fmt(analysis.price)}\n` +
+      `🚸 *Stock Alert*\n\n` +
+      `${icons[type]} *${analysis.symbol}* ${typeLabel[type]} signal\n` +
+      `Level: ${lvLabel[signal.level]}  |  Confirmation: ${confLabel}  |  Score: ${signal.score} pts\n` +
+      `Price: ${fmt(analysis.price)}\n` +
       (upperVal ? `${upperLabel}：${fmt(upperVal)}` : '') +
       (lowerVal ? `  ${lowerLabel}：${fmt(lowerVal)}` : '') +
       (alert.takeProfit && alert.stopLoss
         ? `  \`R:R ${ ((Math.abs(alert.takeProfit - analysis.price)) / Math.abs(alert.stopLoss - analysis.price)).toFixed(1) }:1\`\n`
-        : '\n') +
-      signal.reasons.slice(0, 3).map(r => '• ' + r).join('\n');
+        : '\n');
     sendTelegramViaServer(tgMsg);
 
     this.notify();

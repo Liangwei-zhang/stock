@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Typography, Tooltip, Button, Badge, Space } from 'antd';
+import { Layout, Typography, Tooltip, Button, Badge } from 'antd';
 import { BellOutlined, PlusOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons';
 import { autoTradeService } from '../services/autoTradeService';
 import { PluginSelector }   from './PluginSelector';
@@ -28,17 +28,23 @@ export const AppHeader: React.FC<Props> = ({
   const atActive = atCfg.enabled && Object.values(atCfg.symbolsEnabled).some(Boolean);
   const atCount  = Object.values(atCfg.symbolsEnabled).filter(Boolean).length;
   const isLive   = stocks.some(s => s.source === 'real');
+  const focusLabel = selectedStock ? `Focus ${selectedStock}` : 'No Symbol Selected';
 
   return (
     <Header className="header">
       <div className="header-left">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-          <rect width="32" height="32" rx="8" fill="#1890ff"/>
-          <path d="M8 20L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="12" cy="14" r="2" fill="white"/>
-          <circle cx="20" cy="10" r="2" fill="white"/>
-        </svg>
-        <Title level={5} className="header-title">股票智能預警</Title>
+        <div className="header-logo">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="#77d7a2"/>
+            <path d="M8 20L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="12" cy="14" r="2" fill="white"/>
+            <circle cx="20" cy="10" r="2" fill="white"/>
+          </svg>
+        </div>
+        <div className="header-brand">
+          <Title level={5} className="header-title">Stock Signal</Title>
+          <Text className="header-subtitle">Quant Monitoring and Trading Workspace</Text>
+        </div>
       </div>
 
       <div className="header-center">
@@ -50,25 +56,21 @@ export const AppHeader: React.FC<Props> = ({
             hour12: false,
           })}
         </Text>
-        <Tooltip title={isLive ? '已连接实时行情' : '使用模拟数据'}>
-          <span style={{ fontSize: 12, color: isLive ? '#3fb950' : '#d29922' }}>
+        <Tooltip title={isLive ? 'Connected to live market data' : 'Using simulated market data'}>
+          <span className={`header-status-pill ${isLive ? 'live' : 'delayed'}`}>
             {isLive ? <WifiOutlined/> : <DisconnectOutlined/>}
+            {isLive ? 'Live Feed' : 'Simulated'}
           </span>
         </Tooltip>
+        <span className="header-focus-pill">{focusLabel}</span>
       </div>
 
       <div className="header-right">
-        {/* 算法插件切换 */}
+        <div className="header-actions-shell">
         <PluginSelector currentSymbol={selectedStock} onSwitch={onRefresh}/>
-
-        {/* 数据源配置 */}
         <DataSourceConfig onUpdate={onRefresh}/>
-
-        {/* 导出报表 */}
         <ExportButton symbol={selectedStock} disabled={!selectedStock}/>
-
-        {/* 自动交易开关 */}
-        <Tooltip title={atActive ? `自動交易：${atCount} 個標的監控中` : '自動交易已暫停'}>
+        <Tooltip title={atActive ? `Auto-trading active on ${atCount} symbols` : 'Auto-trading is paused'}>
           <Button
             size="small"
             onClick={() => { autoTradeService.setEnabled(!atCfg.enabled); onRefresh(); }}
@@ -78,18 +80,18 @@ export const AppHeader: React.FC<Props> = ({
               height: 22,
               paddingBlock: 0,
               paddingInline: 8,
-              background: atActive ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-              borderColor: atActive ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)',
-              color: atActive ? '#4ade80' : '#8b949e',
+              background: atActive ? 'rgba(103, 201, 138, 0.16)' : '#f4faf6',
+              borderColor: atActive ? 'rgba(103, 201, 138, 0.35)' : 'rgba(93, 187, 123, 0.18)',
+              color: atActive ? '#2f7d4b' : '#6b8576',
             }}
-            icon={<span style={{ fontSize: 12, color: atActive ? '#4ade80' : '#8b949e' }}>⚡</span>}
+            icon={<span style={{ fontSize: 12, color: atActive ? '#2f7d4b' : '#6b8576' }}>⚡</span>}
           >
-            {atActive ? `自動 ${atCount}` : '自動'}
+            {atActive ? `Auto ${atCount}` : 'Auto'}
           </Button>
         </Tooltip>
 
-        <Tooltip title="搜索並添加資產">
-          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>添加</Button>
+        <Tooltip title="Search and add symbols">
+          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>Add</Button>
         </Tooltip>
 
         <Badge count={unreadCount} size="small" offset={[-2, 2]}>
@@ -97,6 +99,7 @@ export const AppHeader: React.FC<Props> = ({
             className={`alert-button${unreadCount > 0 ? ' alert-badge-bounce' : ''}`}
             onClick={onAlertClick}/>
         </Badge>
+        </div>
       </div>
     </Header>
   );

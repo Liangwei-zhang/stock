@@ -71,7 +71,7 @@ function saveState(account: Account): void {
       trades:         account.trades,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch (e) { console.warn('[tradingSimulator] saveState 失敗:', e); }
+  } catch (e) { console.warn('[tradingSimulator] saveState failed:', e); }
 }
 
 function loadState(): PersistedState | null {
@@ -79,7 +79,7 @@ function loadState(): PersistedState | null {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PersistedState;
-  } catch (e) { console.warn('[tradingSimulator] loadState 失敗:', e); return null; }
+  } catch (e) { console.warn('[tradingSimulator] loadState failed:', e); return null; }
 }
 
 const FEE_RATE        = 0.001;
@@ -159,18 +159,18 @@ class TradingSimulator {
     const { symbol, type, price, atr } = signal;
     const atrValue = atr ?? price * DEFAULT_ATR_PCT;
 
-    if (price <= 0) return { success: false, message: '價格異常（≤0），無法交易' };
+    if (price <= 0) return { success: false, message: 'Invalid price (<= 0). Unable to trade.' };
     if (quantity <= 0) {
       quantity = Math.floor((this.account.balance * POSITION_RATIO) / price * 10_000) / 10_000;
     }
-    if (quantity <= 0) return { success: false, message: '餘額不足，無法開倉' };
+    if (quantity <= 0) return { success: false, message: 'Insufficient balance to open a position' };
 
     const total = quantity * price;
     const fee   = total * FEE_RATE;
 
     if (type === 'buy') {
       if (this.account.balance < total + fee)
-        return { success: false, message: `餘額不足（需 $${(total + fee).toFixed(2)}）` };
+        return { success: false, message: `Insufficient balance (requires $${(total + fee).toFixed(2)})` };
 
       this.account.balance -= total + fee;
       const existing = this.account.positions.get(symbol);
@@ -194,7 +194,7 @@ class TradingSimulator {
       this.account.trades.unshift({ id: ++this.tradeCounter, symbol, side: 'buy', quantity, price, total, fee, date: Date.now(), exitReason });
     } else {
       const pos = this.account.positions.get(symbol);
-      if (!pos) return { success: false, message: `無 ${symbol} 持倉，無法賣出` };
+      if (!pos) return { success: false, message: `No open ${symbol} position available to sell` };
 
       const sellQty    = Math.min(quantity, pos.quantity);
       const sellTotal  = sellQty * price;
@@ -212,7 +212,7 @@ class TradingSimulator {
     this.recalcTotals();
     this.persist();
     this.notify();
-    return { success: true, message: `${type === 'buy' ? '買入' : '賣出'} ${quantity.toFixed(4)} ${symbol} @ $${price.toFixed(2)}` };
+    return { success: true, message: `${type === 'buy' ? 'Bought' : 'Sold'} ${quantity.toFixed(4)} ${symbol} @ $${price.toFixed(2)}` };
   }
 
   /**
@@ -232,19 +232,19 @@ class TradingSimulator {
       if (isLong) {
         if (pos.stopLoss && price <= pos.stopLoss) {
           shouldExit = true; exitReason = 'stop_loss';
-          reason = `止損觸發 @ $${price.toFixed(2)}（止損線 $${pos.stopLoss.toFixed(2)}）`;
+          reason = `Stop triggered @ $${price.toFixed(2)} (stop $${pos.stopLoss.toFixed(2)})`;
         } else if (pos.takeProfit && price >= pos.takeProfit) {
           shouldExit = true; exitReason = 'take_profit';
-          reason = `止盈觸發 @ $${price.toFixed(2)}（止盈線 $${pos.takeProfit.toFixed(2)}）`;
+          reason = `Target triggered @ $${price.toFixed(2)} (target $${pos.takeProfit.toFixed(2)})`;
         }
       } else {
         // 空頭：止損在上方，止盈在下方
         if (pos.stopLoss && price >= pos.stopLoss) {
           shouldExit = true; exitReason = 'stop_loss';
-          reason = `止損觸發 @ $${price.toFixed(2)}（止損線 $${pos.stopLoss.toFixed(2)}）`;
+          reason = `Stop triggered @ $${price.toFixed(2)} (stop $${pos.stopLoss.toFixed(2)})`;
         } else if (pos.takeProfit && price <= pos.takeProfit) {
           shouldExit = true; exitReason = 'take_profit';
-          reason = `止盈觸發 @ $${price.toFixed(2)}（止盈線 $${pos.takeProfit.toFixed(2)}）`;
+          reason = `Target triggered @ $${price.toFixed(2)} (target $${pos.takeProfit.toFixed(2)})`;
         }
       }
       if (shouldExit) {

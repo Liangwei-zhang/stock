@@ -13,11 +13,16 @@
 import 'dotenv/config';
 import express from 'express';
 import path    from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { createServer as createNetServer } from 'net';
 
 const app  = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const DIST_PATH = path.join(process.cwd(), 'dist');
+const ROOT_INDEX_PATH = path.join(process.cwd(), 'index.html');
+const FRONTEND_EXCLUDED_PREFIXES = ['/api', '/db', '/alerts', '/alerts-stream', '/health'];
+
+let viteDevServer: any = null;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 // 前後端已整合為單一服務，CORS 僅需支援本機開發的各種慣用 port
@@ -145,26 +150,22 @@ async function setupFrontend() {
     try {
       const { createServer: createViteServer } = await import('vite');
       const hmrPort = await findFreePort(24678); // HMR WebSocket 用獨立 port
-      const vite = await createViteServer({
+      viteDevServer = await createViteServer({
         server: {
           middlewareMode: true,
           hmr: { port: hmrPort },
         },
-        appType: 'spa',
+        appType: 'custom',
       });
-      app.use(vite.middlewares);
+      app.use(viteDevServer.middlewares);
       console.log('⚡  Vite dev middleware 已掛載（支援 HMR 熱更新）');
     } catch (e: any) {
       console.warn('⚠️  Vite middleware 掛載失敗，僅提供 API 服務:', e.message);
     }
   } else {
     // 生產模式：serve dist/ 靜態資源
-    const distPath = path.join(process.cwd(), 'dist');
-    if (existsSync(distPath)) {
-      app.use(express.static(distPath, { index: false }));
-      app.get('*', (_req: express.Request, res: express.Response) =>
-        res.sendFile(path.join(distPath, 'index.html'))
-      );
+    if (existsSync(DIST_PATH)) {
+      app.use(express.static(DIST_PATH, { index: false }));
       console.log('📦 生產模式：服務 dist/ 靜態資源');
     } else {
       console.warn('⚠️  dist/ 不存在，請先執行 npm run build');
@@ -518,6 +519,34 @@ app.get('/health', (_req, res) => {
     sseClients: sseClients.size,
     db:         dbStats,
   });
+});
+
+app.get('*', async (req, res) => {
+  if (FRONTEND_EXCLUDED_PREFIXES.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+
+  if (viteDevServer) {
+    try {
+      const template = readFileSync(ROOT_INDEX_PATH, 'utf-8');
+      const html = await viteDevServer.transformIndexHtml(req.originalUrl, template);
+      res.status(200).setHeader('Content-Type', 'text/html');
+      res.end(html);
+      return;
+    } catch (err: any) {
+      viteDevServer?.ssrFixStacktrace?.(err);
+      res.status(500).end(err?.message ?? 'Failed to render app');
+      return;
+    }
+  }
+
+  if (existsSync(path.join(DIST_PATH, 'index.html'))) {
+    res.sendFile(path.join(DIST_PATH, 'index.html'));
+    return;
+  }
+
+  res.status(404).json({ error: 'Frontend not built' });
 });
 
 

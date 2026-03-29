@@ -8,7 +8,7 @@ const { Text, Title } = Typography;
 
 interface Props {
   currentSymbol?: string;
-  onSwitch?:      () => void;   // 切换后通知父组件刷新
+  onSwitch?:      () => void;
 }
 
 export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => {
@@ -17,7 +17,6 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
   const [cfgDraft, setCfgDraft] = useState<Record<string, unknown>>({});
   const [loading,  setLoading]  = useState(false);
 
-  // 打开时同步快照 & 当前配置
   const handleOpen = () => {
     const s = pluginRegistry.snapshot();
     setSnap(s);
@@ -51,14 +50,14 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
 
   return (
     <>
-      <Tooltip title={`算法插件：${snap.plugins.find(p => p.id === snap.active)?.name ?? '未知'}`}>
+      <Tooltip title={`Strategy Plugin: ${snap.plugins.find(p => p.id === snap.active)?.name ?? 'Unknown'}`}>
         <Button
           size="small"
           icon={<ExperimentOutlined/>}
           onClick={handleOpen}
           style={{ fontSize: 11 }}
         >
-          {snap.plugins.find(p => p.id === snap.active)?.name ?? '算法'}
+          {snap.plugins.find(p => p.id === snap.active)?.name ?? 'Strategy'}
         </Button>
       </Tooltip>
 
@@ -66,18 +65,17 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
         open={open}
         onCancel={() => setOpen(false)}
         onOk={handleSaveConfig}
-        okText="应用"
-        cancelText="取消"
+        okText="Apply"
+        cancelText="Cancel"
         title={
           <Space>
             <ExperimentOutlined/>
-            <span>算法插件管理</span>
+            <span>Strategy Plugin Manager</span>
           </Space>
         }
         width={520}
       >
-        {/* 插件列表 */}
-        <Title level={5} style={{ marginBottom: 12 }}>可用插件</Title>
+        <Title level={5} style={{ marginBottom: 12 }}>Available Plugins</Title>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {snap.plugins.map(p => (
             <div
@@ -86,8 +84,8 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
               style={{
                 padding: '10px 14px',
                 borderRadius: 8,
-                border: `1px solid ${snap.active === p.id ? '#1890ff' : '#21262d'}`,
-                background: snap.active === p.id ? 'rgba(24,144,255,0.08)' : 'transparent',
+                border: `1px solid ${snap.active === p.id ? '#67c98a' : 'rgba(93, 187, 123, 0.18)'}`,
+                background: snap.active === p.id ? 'rgba(103,201,138,0.1)' : '#f7fcf8',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -96,31 +94,30 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
               }}
             >
               <div>
-                <Text strong style={{ color: snap.active === p.id ? '#1890ff' : '#e6edf3' }}>
+                <Text strong style={{ color: snap.active === p.id ? '#2f7d4b' : '#183024' }}>
                   {p.name}
                 </Text>
                 <Tag style={{ marginLeft: 8, fontSize: 10 }}>{p.version}</Tag>
-                <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>{p.description}</div>
+                <div style={{ fontSize: 12, color: '#5f7a6a', marginTop: 2 }}>{p.description}</div>
               </div>
               {snap.active === p.id && (
-                <CheckCircleOutlined style={{ color: '#1890ff', fontSize: 16, marginLeft: 8 }} />
+                <CheckCircleOutlined style={{ color: '#67c98a', fontSize: 16, marginLeft: 8 }} />
               )}
             </div>
           ))}
         </div>
 
-        {/* 当前插件参数配置 */}
         {schema.length > 0 && (
           <>
             <Divider style={{ margin: '0 0 16px' }}/>
             <Title level={5} style={{ marginBottom: 12 }}>
               <SettingOutlined style={{ marginRight: 6 }}/>
-              参数调整（{activePlugin?.name}）
+              Parameter Settings ({activePlugin?.name})
             </Title>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
               {schema.map(s => (
                 <div key={s.key} style={{ marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 12, color: '#5f7a6a', display: 'block', marginBottom: 4 }}>
                     {s.label}
                   </Text>
                   {s.type === 'boolean' ? (

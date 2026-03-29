@@ -116,8 +116,8 @@ class StockService {
     let stored = await getWatchlist();
     if (!stored.length) {
       const defaults: WatchlistItem[] = [
-        { symbol: 'AAPL', name: '苹果公司', addedAt: Date.now(), assetType: 'equity', exchange: 'NMS' },
-        { symbol: 'TSLA', name: '特斯拉',   addedAt: Date.now(), assetType: 'equity', exchange: 'NMS' },
+        { symbol: 'AAPL', name: 'Apple',    addedAt: Date.now(), assetType: 'equity', exchange: 'NMS' },
+        { symbol: 'TSLA', name: 'Tesla',    addedAt: Date.now(), assetType: 'equity', exchange: 'NMS' },
         { symbol: 'BTC',  name: 'Bitcoin',  addedAt: Date.now(), assetType: 'crypto', exchange: 'Binance' },
       ];
       for (const d of defaults) await upsertWatchlistItem(d);

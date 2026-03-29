@@ -14,7 +14,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('searchService.ts — assetTypeLabel', () => {
   it('equity returns 股票', async () => {
     const { assetTypeLabel } = await import('../services/searchService');
-    expect(assetTypeLabel('equity')).toBe('股票');
+    expect(assetTypeLabel('equity')).toBe('Equity');
   });
 
   it('etf returns ETF', async () => {
@@ -24,29 +24,29 @@ describe('searchService.ts — assetTypeLabel', () => {
 
   it('futures returns 期货', async () => {
     const { assetTypeLabel } = await import('../services/searchService');
-    expect(assetTypeLabel('futures')).toBe('期货');
+    expect(assetTypeLabel('futures')).toBe('Futures');
   });
 
   it('index returns 指数', async () => {
     const { assetTypeLabel } = await import('../services/searchService');
-    expect(assetTypeLabel('index')).toBe('指数');
+    expect(assetTypeLabel('index')).toBe('Index');
   });
 
   it('crypto returns 加密', async () => {
     const { assetTypeLabel } = await import('../services/searchService');
-    expect(assetTypeLabel('crypto')).toBe('加密');
+    expect(assetTypeLabel('crypto')).toBe('Crypto');
   });
 
   it('other returns 其他', async () => {
     const { assetTypeLabel } = await import('../services/searchService');
-    expect(assetTypeLabel('other')).toBe('其他');
+    expect(assetTypeLabel('other')).toBe('Other');
   });
 });
 
 describe('searchService.ts — assetTypeColor', () => {
-  it('equity returns blue', async () => {
+  it('equity returns green', async () => {
     const { assetTypeColor } = await import('../services/searchService');
-    expect(assetTypeColor('equity')).toBe('blue');
+    expect(assetTypeColor('equity')).toBe('green');
   });
 
   it('etf returns cyan', async () => {

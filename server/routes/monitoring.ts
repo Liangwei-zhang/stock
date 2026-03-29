@@ -20,7 +20,7 @@ function requireBearer(req: Request, res: Response, next: NextFunction): void {
   if (!config.INTERNAL_TOKEN) {
     // 未配置 token → 僅開發環境放行
     if (config.NODE_ENV === 'production') {
-      res.status(401).json({ error: 'INTERNAL_TOKEN 未配置，監控端點已關閉' });
+      res.status(401).json({ error: 'INTERNAL_TOKEN is not configured, monitoring endpoints are disabled' });
       return;
     }
     return next();
@@ -54,11 +54,11 @@ router.get('/metrics', requireBearer, (_req, res) => {
 /** 重置指標（僅開發/測試環境使用） */
 router.post('/reset', requireBearer, (_req, res) => {
   if (config.NODE_ENV === 'production') {
-    res.status(403).json({ error: '生產環境禁止重置指標' });
+    res.status(403).json({ error: 'Metric reset is disabled in production' });
     return;
   }
   metrics.reset();
-  res.json({ ok: true, message: '指標已重置' });
+  res.json({ ok: true, message: 'Metrics reset complete' });
 });
 
 export default router;

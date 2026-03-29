@@ -288,7 +288,7 @@ export async function savePOIs(symbol: string, pois: StoredPOI[]): Promise<void>
       // 刪除完成後批量寫入（tx1 已提交，確保原子性）
       const tx2 = db.transaction('pois', 'readwrite');
       const store2 = tx2.objectStore('pois');
-      tx2.onerror = () => console.warn('[savePOIs] 寫入 tx2 失敗:', tx2.error);
+      tx2.onerror = () => console.warn('[savePOIs] tx2 write failed:', tx2.error);
       for (const poi of pois) {
         store2.put({ ...poi, symbol });
       }

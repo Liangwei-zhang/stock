@@ -51,16 +51,16 @@ router.get(
     );
 
     if (!trade) {
-      return res.status(404).send(renderPage('❌', '交易記錄不存在'));
+      return res.status(404).send(renderPage('❌', 'Trade record not found'));
     }
     if (trade.status !== 'pending') {
-      return res.send(renderPage('ℹ️', `此建議已${statusLabel(trade.status)}，無需重複操作`));
+      return res.send(renderPage('ℹ️', `This suggestion is already ${statusLabel(trade.status)} and does not need another action.`));
     }
     if (new Date(trade.expires_at) < new Date()) {
-      return res.send(renderPage('⏰', '此確認鏈接已過期（24 小時有效）'));
+      return res.send(renderPage('⏰', 'This confirmation link has expired. Links are valid for 24 hours.'));
     }
     if (!verifyLinkToken(trade, t)) {
-      return res.status(403).send(renderPage('⛔', '鏈接無效或已失效'));
+      return res.status(403).send(renderPage('⛔', 'This link is invalid or no longer available'));
     }
 
     if (action === 'ignore') {
@@ -68,7 +68,7 @@ router.get(
         `UPDATE trade_log SET status = 'ignored', confirmed_at = now() WHERE id = $1`,
         [id]
       );
-      return res.send(renderPage('✅', '已忽略此建議'));
+      return res.send(renderPage('✅', 'This suggestion has been ignored'));
     }
 
     // accept：更新持倉
@@ -129,7 +129,7 @@ router.get(
       );
     });
 
-    return res.send(renderPage('✅', `已確認！持倉已自動更新 📊`));
+    return res.send(renderPage('✅', 'Confirmed. Your portfolio has been updated automatically.'));
   })
 );
 
@@ -151,17 +151,17 @@ router.post(
     const { t } = req.query as { t?: string };
     const { actual_shares, actual_price } = req.body as z.infer<typeof adjustSchema>;
 
-    if (!t) return res.status(400).json({ error: '缺少驗證 token' });
+    if (!t) return res.status(400).json({ error: 'Missing verification token' });
 
     const trade = await queryOne<{
       id: string; user_id: string; symbol: string; action: string;
       status: string; link_token: string; link_sig: string; expires_at: string;
     }>(`SELECT * FROM trade_log WHERE id = $1`, [id]);
 
-    if (!trade) return res.status(404).json({ error: '不存在' });
-    if (trade.status !== 'pending') return res.status(400).json({ error: '已操作' });
-    if (new Date(trade.expires_at) < new Date()) return res.status(400).json({ error: '已過期' });
-    if (!verifyLinkToken(trade, t)) return res.status(403).json({ error: '鏈接無效' });
+    if (!trade) return res.status(404).json({ error: 'Trade record not found' });
+    if (trade.status !== 'pending') return res.status(400).json({ error: 'This trade has already been processed' });
+    if (new Date(trade.expires_at) < new Date()) return res.status(400).json({ error: 'This link has expired' });
+    if (!verifyLinkToken(trade, t)) return res.status(403).json({ error: 'Invalid link token' });
 
     const actual_amount = parseFloat((actual_shares * actual_price).toFixed(2));
 
@@ -217,19 +217,19 @@ router.post(
       );
     });
 
-    res.json({ message: '已記錄您的實際操作', actual_amount });
+    res.json({ message: 'Actual execution recorded', actual_amount });
   })
 );
 
 function statusLabel(s: string): string {
   const map: Record<string, string> = {
-    confirmed: '已確認', adjusted: '已調整', ignored: '已忽略', expired: '已過期',
+    confirmed: 'confirmed', adjusted: 'adjusted', ignored: 'ignored', expired: 'expired',
   };
   return map[s] ?? s;
 }
 
 function renderPage(emoji: string, msg: string): string {
-  return `<!DOCTYPE html><html lang="zh">
+  return `<!DOCTYPE html><html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stock Signal</title>
 <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;
@@ -242,7 +242,7 @@ a{color:#1677ff;font-size:13px}</style></head>
 <body><div class="card">
 <div class="emoji">${emoji}</div>
 <p>${msg}</p>
-<a href="/">返回首頁</a>
+<a href="/">Back to Home</a>
 </div></body></html>`;
 }
 

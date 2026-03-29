@@ -10,6 +10,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import TradeAdjustPage from './pages/TradeAdjustPage';
 import { TradeSuccessPage } from './pages/TradeSuccessPage';
+import { useI18n } from './i18n';
 import './mobile-theme.css';
 
 /**
@@ -19,25 +20,26 @@ import './mobile-theme.css';
  */
 export const MobileApp: React.FC = () => {
   const navigate = useNavigate();
+  const { antdLocale } = useI18n();
   return (
-    <ConfigProvider theme={{
-      algorithm: theme.darkAlgorithm,
+    <ConfigProvider locale={antdLocale} theme={{
+      algorithm: theme.defaultAlgorithm,
       token: {
-        colorPrimary: '#2f7df6',
-        colorInfo: '#2f7df6',
-        colorSuccess: '#3ddc97',
-        colorWarning: '#ffbf69',
+        colorPrimary: '#2f8c57',
+        colorInfo: '#2f8c57',
+        colorSuccess: '#67b783',
+        colorWarning: '#c8aa6f',
         colorError: '#ff6b6b',
-        colorBgBase: '#07111f',
-        colorBgContainer: '#0d1625',
-        colorBgElevated: '#111d31',
-        colorText: '#f5f7fb',
-        colorTextSecondary: '#a6b3c8',
-        colorBorder: 'rgba(148, 163, 184, 0.16)',
-        borderRadius: 18,
-        borderRadiusLG: 22,
-        boxShadowSecondary: '0 24px 80px rgba(3, 10, 24, 0.45)',
-        fontFamily: 'Avenir Next, SF Pro Display, Segoe UI Variable Display, Segoe UI, sans-serif',
+        colorBgBase: '#f8fbf8',
+        colorBgContainer: '#ffffff',
+        colorBgElevated: '#ffffff',
+        colorText: '#14261d',
+        colorTextSecondary: '#5c7367',
+        colorBorder: 'rgba(84, 155, 108, 0.18)',
+        borderRadius: 20,
+        borderRadiusLG: 24,
+        boxShadowSecondary: '0 28px 70px rgba(84, 135, 101, 0.18)',
+        fontFamily: 'Aptos, Avenir Next, SF Pro Display, Segoe UI Variable Display, Segoe UI, Helvetica Neue, Arial, sans-serif',
       },
       components: {
         Button: {
@@ -69,7 +71,6 @@ export const MobileApp: React.FC = () => {
         <Route path="/settings"        element={<SettingsPage />} />
         <Route path="/trade/adjust"    element={<TradeAdjustPage />} />
         <Route path="/trade/success"   element={<TradeSuccessPage />} />
-        {/* 舊版桌面應用保留在 /desktop */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ConfigProvider>

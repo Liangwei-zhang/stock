@@ -20,8 +20,8 @@ async function getMaxPortfolio(userId: string): Promise<number> {
 
 const addSchema = z.object({
   symbol:        z.string().min(1).max(20).transform(s => s.toUpperCase()),
-  shares:        z.number().positive('股數必須大於 0'),
-  avg_cost:      z.number().positive('成本必須大於 0'),
+  shares:        z.number().int('Shares must be a whole number').positive('Shares must be greater than 0'),
+  avg_cost:      z.number().positive('Average cost must be greater than 0'),
   target_profit: z.number().min(0.01).max(1).default(0.15),
   stop_loss:     z.number().min(0.01).max(1).default(0.08),
   notify:        z.boolean().default(true),
@@ -59,10 +59,10 @@ router.post('/', validate(addSchema), asyncHandler(async (req, res) => {
     getMaxPortfolio(userId),
   ]);
   if (Number(countRow?.count ?? 0) >= max) {
-    return res.status(400).json({ error: `持倉數已達上限（${max} 個）` });
+    return res.status(400).json({ error: `Portfolio limit reached (${max} positions)` });
   }
 
-  // 確保 symbol 存在
+  // Ensure the symbol exists.
   await query(
     `INSERT INTO symbols (symbol, name) VALUES ($1, $1)
      ON CONFLICT (symbol) DO NOTHING`,
@@ -101,14 +101,14 @@ router.put('/:id', validate(updateSchema), asyncHandler(async (req, res) => {
   const { id } = req.params;
   const body = req.body as z.infer<typeof updateSchema>;
 
-  // 取出現有值再合併計算 total_capital
+  // Merge existing values before recalculating total_capital.
   const existing = await queryOne<{
     shares: string; avg_cost: string;
   }>(
     `SELECT shares, avg_cost FROM user_portfolio WHERE id = $1 AND user_id = $2`,
     [id, userId]
   );
-  if (!existing) return res.status(404).json({ error: '持倉不存在' });
+  if (!existing) return res.status(404).json({ error: 'Position not found' });
 
   const newShares   = body.shares   ?? parseFloat(existing.shares);
   const newAvgCost  = body.avg_cost ?? parseFloat(existing.avg_cost);
@@ -146,9 +146,9 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     `DELETE FROM user_portfolio WHERE id = $1 AND user_id = $2 RETURNING symbol`,
     [id, userId]
   );
-  if (!row) return res.status(404).json({ error: '持倉不存在' });
+  if (!row) return res.status(404).json({ error: 'Position not found' });
   await delCache('active_symbols');
-  res.json({ message: '已刪除' });
+  res.json({ message: 'Deleted' });
 }));
 
 export default router;

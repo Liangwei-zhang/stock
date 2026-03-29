@@ -129,19 +129,19 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
     try {
       await pluginRegistry.setActive(top.pluginId, selectedStock);
       setActivePluginId(top.pluginId);
-      message.success(`已切換為最佳策略：${top.pluginName}`);
+      message.success(`Switched to best strategy: ${top.pluginName}`);
       onRefresh?.();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : '未知錯誤';
-      message.error(`切換策略失敗：${reason}`);
+      const reason = error instanceof Error ? error.message : 'Unknown error';
+      message.error(`Failed to switch strategy: ${reason}`);
     } finally {
       setActivatingBest(false);
     }
   };
 
   const exportItems = [
-    { key: 'csv', label: '導出 CSV' },
-    { key: 'json', label: '導出 JSON' },
+    { key: 'csv', label: 'Export CSV' },
+    { key: 'json', label: 'Export JSON' },
   ];
 
   const handleExport = (format: 'csv' | 'json') => {
@@ -228,9 +228,9 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
     <div className="ranking-panel">
       <div className="ranking-header">
         <div>
-          <div className="ranking-title">算法回测排名</div>
+          <div className="ranking-title">Algorithm Backtest Ranking</div>
           <div className="ranking-subtitle">
-            {selectedStock} · {history.length} 根 K 线
+            {selectedStock} · {history.length} bars
           </div>
         </div>
         <Segmented
@@ -238,8 +238,8 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
           value={mode}
           onChange={(value) => setMode(value as RankingMode)}
           options={[
-            { label: '真实交易', value: 'trade' },
-            { label: '信号方向', value: 'signal' },
+            { label: 'Trade Backtest', value: 'trade' },
+            { label: 'Signal Backtest', value: 'signal' },
           ]}
         />
       </div>
@@ -247,7 +247,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
       <div className="ranking-toolbar">
         <div className="ranking-toolbar-actions">
           <Button size="small" onClick={() => setShowSettings(v => !v)}>
-            {showSettings ? '收起参数' : '调整参数'}
+            {showSettings ? 'Hide Settings' : 'Adjust Settings'}
           </Button>
           <Button
             size="small"
@@ -256,7 +256,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
               else setSignalOptions(DEFAULT_SIGNAL_OPTIONS);
             }}
           >
-            恢复默认
+            Reset Defaults
           </Button>
           <Dropdown
             menu={{
@@ -266,14 +266,14 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
             trigger={['click']}
           >
             <Button size="small" icon={<DownloadOutlined />}>
-              導出排行
+              Export Ranking
             </Button>
           </Dropdown>
         </div>
         <Text className="ranking-toolbar-note">
           {mode === 'trade'
-            ? `回看 ${tradeOptions.lookbackBars} / 仓位 ${tradeOptions.positionPct}% / 止损 ${tradeOptions.stopMultiplier}x ATR / 止盈 ${tradeOptions.profitMultiplier}x ATR`
-            : `回看 ${signalOptions.lookbackBars} / 持有 ${signalOptions.holdBars} 根 / 信号阈值 ${signalOptions.minSignalScore} / 概率阈值 ${signalOptions.minConfidence}%`}
+            ? `Lookback ${tradeOptions.lookbackBars} / Position ${tradeOptions.positionPct}% / Stop ${tradeOptions.stopMultiplier}x ATR / Target ${tradeOptions.profitMultiplier}x ATR`
+            : `Lookback ${signalOptions.lookbackBars} / Hold ${signalOptions.holdBars} bars / Signal Threshold ${signalOptions.minSignalScore} / Confidence Threshold ${signalOptions.minConfidence}%`}
         </Text>
       </div>
 
@@ -282,62 +282,62 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
           {mode === 'trade' ? (
             <div className="ranking-settings-grid">
               <label className="ranking-setting-item">
-                <span>回看K线</span>
+                <span>Lookback Bars</span>
                 <InputNumber size="small" min={40} max={240} step={10} value={tradeOptions.lookbackBars} onChange={(value) => setTradeOptions(v => ({ ...v, lookbackBars: value ?? v.lookbackBars }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>仓位%</span>
+                <span>Position %</span>
                 <InputNumber size="small" min={5} max={50} step={5} value={tradeOptions.positionPct} onChange={(value) => setTradeOptions(v => ({ ...v, positionPct: value ?? v.positionPct }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>止损 ATR</span>
+                <span>Stop ATR</span>
                 <InputNumber size="small" min={0.5} max={5} step={0.5} value={tradeOptions.stopMultiplier} onChange={(value) => setTradeOptions(v => ({ ...v, stopMultiplier: value ?? v.stopMultiplier }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>止盈 ATR</span>
+                <span>Target ATR</span>
                 <InputNumber size="small" min={1} max={8} step={0.5} value={tradeOptions.profitMultiplier} onChange={(value) => setTradeOptions(v => ({ ...v, profitMultiplier: value ?? v.profitMultiplier }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>买入阈值</span>
+                <span>Buy Threshold</span>
                 <InputNumber size="small" min={35} max={95} step={5} value={tradeOptions.minBuyScore} onChange={(value) => setTradeOptions(v => ({ ...v, minBuyScore: value ?? v.minBuyScore }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>卖出阈值</span>
+                <span>Sell Threshold</span>
                 <InputNumber size="small" min={35} max={95} step={5} value={tradeOptions.minSellScore} onChange={(value) => setTradeOptions(v => ({ ...v, minSellScore: value ?? v.minSellScore }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>预测阈值%</span>
+                <span>Prediction Threshold %</span>
                 <InputNumber size="small" min={50} max={95} step={5} value={tradeOptions.minPredProb} onChange={(value) => setTradeOptions(v => ({ ...v, minPredProb: value ?? v.minPredProb }))} />
               </label>
               <label className="ranking-setting-item switch">
-                <span>允许做空</span>
+                <span>Allow Short</span>
                 <Switch size="small" checked={tradeOptions.allowShort} onChange={(checked) => setTradeOptions(v => ({ ...v, allowShort: checked }))} />
               </label>
               <label className="ranking-setting-item switch">
-                <span>纳入预测</span>
+                <span>Include Predictions</span>
                 <Switch size="small" checked={tradeOptions.includePredictions} onChange={(checked) => setTradeOptions(v => ({ ...v, includePredictions: checked }))} />
               </label>
             </div>
           ) : (
             <div className="ranking-settings-grid compact">
               <label className="ranking-setting-item">
-                <span>回看K线</span>
+                <span>Lookback Bars</span>
                 <InputNumber size="small" min={40} max={240} step={10} value={signalOptions.lookbackBars} onChange={(value) => setSignalOptions(v => ({ ...v, lookbackBars: value ?? v.lookbackBars }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>持有根数</span>
+                <span>Hold Bars</span>
                 <InputNumber size="small" min={1} max={20} step={1} value={signalOptions.holdBars} onChange={(value) => setSignalOptions(v => ({ ...v, holdBars: value ?? v.holdBars }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>信号阈值</span>
+                <span>Signal Threshold</span>
                 <InputNumber size="small" min={35} max={95} step={5} value={signalOptions.minSignalScore} onChange={(value) => setSignalOptions(v => ({ ...v, minSignalScore: value ?? v.minSignalScore }))} />
               </label>
               <label className="ranking-setting-item">
-                <span>概率阈值%</span>
+                <span>Confidence Threshold %</span>
                 <InputNumber size="small" min={50} max={95} step={5} value={signalOptions.minConfidence} onChange={(value) => setSignalOptions(v => ({ ...v, minConfidence: value ?? v.minConfidence }))} />
               </label>
               <label className="ranking-setting-item switch">
-                <span>纳入预测</span>
+                <span>Include Predictions</span>
                 <Switch size="small" checked={signalOptions.includePredictions} onChange={(checked) => setSignalOptions(v => ({ ...v, includePredictions: checked }))} />
               </label>
             </div>
@@ -349,7 +349,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
         <div className="ranking-empty">
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="历史数据不足，至少需要约 90 根 K 线才适合做排名对比"
+            description="Not enough history. Ranking works best with at least 90 bars."
           />
         </div>
       ) : (
@@ -358,15 +358,15 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
             <div className="ranking-summary-card">
               <div className="ranking-summary-top">
                 <div>
-                  <div className="ranking-summary-label">当前最佳</div>
+                  <div className="ranking-summary-label">Current Best</div>
                   <div className="ranking-summary-name">{top.pluginName}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Tag color={mode === 'trade' ? 'gold' : 'blue'} style={{ margin: 0 }}>
-                    {mode === 'trade' ? '真实交易最佳' : '信号命中最佳'}
+                  <Tag color={mode === 'trade' ? 'gold' : 'green'} style={{ margin: 0 }}>
+                    {mode === 'trade' ? 'Best Trade Result' : 'Best Signal Hit Rate'}
                   </Tag>
                   {top.pluginId === activePluginId ? (
-                    <Tag color="green" style={{ margin: 0 }}>目前已啟用</Tag>
+                    <Tag color="green" style={{ margin: 0 }}>Active Now</Tag>
                   ) : (
                     <Button
                       size="small"
@@ -374,7 +374,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
                       loading={activatingBest}
                       onClick={handleActivateBest}
                     >
-                      一鍵套用最佳策略
+                      Apply Best Strategy
                     </Button>
                   )}
                 </div>
@@ -382,10 +382,10 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
               <div className="ranking-metrics-grid">
                 {tradeTop
                   ? [
-                      ['胜率', tradeTop.tradeStats ? `${(tradeTop.tradeStats.winRate * 100).toFixed(1)}%` : '-'],
-                      ['总盈亏', tradeTop.tradeStats ? `${tradeTop.tradeStats.totalPnL >= 0 ? '+' : ''}$${tradeTop.tradeStats.totalPnL.toFixed(2)}` : '-'],
+                      ['Win Rate', tradeTop.tradeStats ? `${(tradeTop.tradeStats.winRate * 100).toFixed(1)}%` : '-'],
+                      ['Total PnL', tradeTop.tradeStats ? `${tradeTop.tradeStats.totalPnL >= 0 ? '+' : ''}$${tradeTop.tradeStats.totalPnL.toFixed(2)}` : '-'],
                       ['Sharpe', tradeTop.tradeStats ? tradeTop.tradeStats.sharpeRatio.toFixed(2) : '-'],
-                      ['回撤', tradeTop.tradeStats ? `${(tradeTop.tradeStats.maxDrawdown * 100).toFixed(1)}%` : '-'],
+                      ['Drawdown', tradeTop.tradeStats ? `${(tradeTop.tradeStats.maxDrawdown * 100).toFixed(1)}%` : '-'],
                     ].map(([label, value]) => (
                       <div key={label} className="ranking-metric-cell">
                         <div className="ranking-metric-label">{label}</div>
@@ -393,10 +393,10 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
                       </div>
                     ))
                   : [
-                      ['胜率', `${((signalTop?.stats.winRate ?? 0) * 100).toFixed(1)}%`],
-                      ['平均收益', `${((signalTop?.stats.avgReturn ?? 0) * 100).toFixed(2)}%`],
-                      ['总信号', `${signalTop?.stats.totalSignals ?? 0}`],
-                      ['高置信度', `${signalTop?.stats.highConfidence ?? 0}`],
+                      ['Win Rate', `${((signalTop?.stats.winRate ?? 0) * 100).toFixed(1)}%`],
+                      ['Average Return', `${((signalTop?.stats.avgReturn ?? 0) * 100).toFixed(2)}%`],
+                      ['Total Signals', `${signalTop?.stats.totalSignals ?? 0}`],
+                      ['High Confidence', `${signalTop?.stats.highConfidence ?? 0}`],
                     ].map(([label, value]) => (
                       <div key={label} className="ranking-metric-cell">
                         <div className="ranking-metric-label">{label}</div>
@@ -409,12 +409,12 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
 
           <div className="ranking-table">
             <div className="ranking-table-head">
-              <span>排名</span>
-              <span>策略</span>
-              <span>{mode === 'trade' ? '胜率' : '信号胜率'}</span>
-              <span>{mode === 'trade' ? '总盈亏' : '平均收益'}</span>
-              <span>{mode === 'trade' ? 'Sharpe' : '总信号'}</span>
-              <span>{mode === 'trade' ? '回撤' : '高置信度'}</span>
+              <span>Rank</span>
+              <span>Strategy</span>
+              <span>{mode === 'trade' ? 'Win Rate' : 'Signal Win Rate'}</span>
+              <span>{mode === 'trade' ? 'Total PnL' : 'Average Return'}</span>
+              <span>{mode === 'trade' ? 'Sharpe' : 'Total Signals'}</span>
+              <span>{mode === 'trade' ? 'Drawdown' : 'High Confidence'}</span>
             </div>
 
             {mode === 'trade'
@@ -424,7 +424,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
                     <span className="ranking-plugin-name">
                       {row.pluginName}
                       {row.pluginId === activePluginId && (
-                        <Tag color="green" style={{ marginLeft: 8 }}>啟用中</Tag>
+                        <Tag color="green" style={{ marginLeft: 8 }}>Active</Tag>
                       )}
                     </span>
                     <span>{row.tradeStats ? `${(row.tradeStats.winRate * 100).toFixed(1)}%` : '-'}</span>
@@ -443,7 +443,7 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
                     <span className="ranking-plugin-name">
                       {row.pluginName}
                       {row.pluginId === activePluginId && (
-                        <Tag color="green" style={{ marginLeft: 8 }}>啟用中</Tag>
+                        <Tag color="green" style={{ marginLeft: 8 }}>Active</Tag>
                       )}
                     </span>
                     <span>{`${(row.stats.winRate * 100).toFixed(1)}%`}</span>
@@ -458,8 +458,8 @@ export const AlgorithmRankingPanel: React.FC<Props> = ({ selectedStock, refreshK
 
           <Text className="ranking-footnote">
             {mode === 'trade'
-              ? '真实交易排行按总盈亏、Sharpe、胜率、盈亏比综合排序。'
-              : '信号排行按方向胜率、平均收益、信号数量排序。'}
+              ? 'Trade ranking sorts by total PnL, Sharpe, win rate, and profit factor.'
+              : 'Signal ranking sorts by directional win rate, average return, and signal count.'}
           </Text>
         </>
       )}

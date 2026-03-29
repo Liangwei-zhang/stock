@@ -8,9 +8,11 @@ import { query, queryOne } from '../db/pool.js';
 const router = Router();
 router.use(authMiddleware);
 
+const supportedCurrencies = ['USD', 'TWD', 'CNY', 'HKD', 'JPY', 'EUR', 'GBP'] as const;
+
 const updateAccountSchema = z.object({
-  total_capital: z.number().positive('總資金必須大於 0').optional(),
-  currency:      z.enum(['USD', 'TWD', 'CNY', 'HKD']).optional(),
+  total_capital: z.coerce.number().positive('Total capital must be greater than 0').optional(),
+  currency:      z.enum(supportedCurrencies).optional(),
   name:          z.string().max(50).optional(),
   locale:        z.string().optional(),
   timezone:      z.string().optional(),
@@ -39,7 +41,7 @@ router.get('/', asyncHandler(async (req, res) => {
   ]);
 
   if (!userRow || !accountRow) {
-    return res.status(404).json({ error: '用戶不存在' });
+    return res.status(404).json({ error: 'User not found' });
   }
 
   const totalCapital = parseFloat(accountRow.total_capital);
@@ -107,7 +109,7 @@ router.put(
       );
     }
 
-    res.json({ message: '更新成功' });
+    res.json({ message: 'Account updated successfully' });
   })
 );
 

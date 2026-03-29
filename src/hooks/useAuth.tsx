@@ -14,6 +14,7 @@ interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   login: (token: string, user: AuthUser) => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -37,6 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   };
 
+  const updateUser = (updates: Partial<AuthUser>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const nextUser = { ...prev, ...updates };
+      localStorage.setItem('auth_user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -56,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, updateUser, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

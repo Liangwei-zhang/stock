@@ -87,12 +87,12 @@ const App: React.FC = () => {
   // ── 加载态 ──────────────────────────────────────────────────────────────────
   if (!initialized) {
     return (
-      <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+      <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}>
         <AntApp>
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7fcf8' }}>
           <div style={{ textAlign: 'center' }}>
             <Spin size="large"/>
-            <div style={{ color: '#8b949e', marginTop: 16, fontSize: 14 }}>正在加载数据…</div>
+            <div style={{ color: '#5f7a6a', marginTop: 16, fontSize: 14 }}>正在加载数据…</div>
           </div>
         </div>
         </AntApp>
@@ -101,9 +101,10 @@ const App: React.FC = () => {
   }
 
   return (
-    <ConfigProvider theme={{ algorithm: theme.darkAlgorithm, token: {
-      colorPrimary: '#1890ff', colorBgContainer: '#1c2333', colorBgElevated: '#1c2333',
-      colorText: '#e6edf3', colorTextSecondary: '#8b949e', borderRadius: 8,
+    <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm, token: {
+      colorPrimary: '#67c98a', colorInfo: '#67c98a', colorSuccess: '#7fd89e', colorBgBase: '#f7fcf8', colorBgContainer: '#ffffff', colorBgElevated: '#ffffff', colorBorder: 'rgba(93, 187, 123, 0.18)',
+      colorText: '#183024', colorTextSecondary: '#5f7a6a', borderRadius: 8,
+      fontFamily: 'Aptos, Avenir Next, SF Pro Display, Segoe UI Variable Display, Segoe UI, Helvetica Neue, Arial, sans-serif',
     }}}>
       <AntApp>
       <Layout className="app">
@@ -135,7 +136,7 @@ const App: React.FC = () => {
               {!selectedStock || !analysis ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📊</div>
-                  <Text style={{ color: '#8b949e' }}>从左侧选择或添加资产以查看分析</Text>
+                  <Text style={{ color: '#5f7a6a' }}>从左侧选择或添加资产以查看分析</Text>
                   <Button type="primary" icon={<PlusOutlined/>} onClick={() => setSearchVisible(true)}>添加资产</Button>
                 </div>
               ) : (
@@ -165,7 +166,7 @@ const App: React.FC = () => {
                         </div>
                       </div>
                       <div className="chart-legend">
-                        {[['MA5', '#1890ff'], ['MA10', '#faad14'], ['MA20', '#722ed1']].map(([l, c]) => (
+                        {[['MA5', '#77d7a2'], ['MA10', '#faad14'], ['MA20', '#722ed1']].map(([l, c]) => (
                           <span key={l} className="legend-item">
                             <span className="legend-dot" style={{ background: c }}/>
                             {l}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Form, InputNumber, Alert, Spin, Typography, Result } from 'antd';
+import { useI18n } from '../i18n';
 
 const { Title, Text } = Typography;
 
@@ -14,9 +15,12 @@ interface TradeInfo {
 }
 
 export default function TradeAdjustPage() {
+  const { t } = useI18n();
   const params = new URLSearchParams(window.location.search);
   const tradeId = params.get('id');
   const token   = params.get('t');
+  const symbol  = params.get('symbol') ?? '';
+  const action  = params.get('action') ?? '';
 
   const [trade, setTrade] = useState<TradeInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +28,15 @@ export default function TradeAdjustPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
+  const actionLabel = action === 'sell'
+    ? t('tradeAdjust.action.sell')
+    : action === 'buy'
+    ? t('tradeAdjust.action.buy')
+    : t('tradeAdjust.action.trade');
+
   useEffect(() => {
     if (!tradeId || !token) {
-      setError('鏈接參數缺失，請從郵件中重新點擊');
+      setError(t('tradeAdjust.missingLink'));
       setLoading(false);
       return;
     }
@@ -47,12 +57,12 @@ export default function TradeAdjustPage() {
       });
       const data = await res.json() as { message?: string; error?: string };
       if (!res.ok) {
-        setError(data.error ?? '提交失敗，請重試');
+        setError(data.error ?? t('tradeAdjust.submissionFailed'));
         return;
       }
       setDone(true);
     } catch {
-      setError('網絡錯誤，請稍後重試');
+      setError(t('tradeAdjust.networkError'));
     } finally {
       setSubmitting(false);
     }
@@ -71,9 +81,9 @@ export default function TradeAdjustPage() {
       <div className="mobile-result-shell">
         <Result
           status="success"
-          title="記錄成功！"
-          subTitle="您的實際操作已記錄，持倉已自動更新 📊"
-          extra={<Button type="primary" href="/">返回首頁</Button>}
+          title={t('tradeAdjust.done.title')}
+          subTitle={t('tradeAdjust.done.subtitle')}
+          extra={<Button type="primary" href="/">{t('tradeAdjust.done.action')}</Button>}
           className="mobile-result-card"
         />
       </div>
@@ -84,10 +94,33 @@ export default function TradeAdjustPage() {
     <div className="mobile-shell mobile-shell--auth">
       <div className="mobile-auth-card">
         <div className="mobile-auth-hero">
-          <div className="mobile-eyebrow">Trade Feedback Loop</div>
+          <div className="mobile-eyebrow">{t('tradeAdjust.eyebrow')}</div>
           <div className="mobile-auth-icon">✏️</div>
-          <Title level={3} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>填寫實際操作</Title>
-          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>把您在券商 App 的最終成交結果回填，系統會以真實成交修正持倉與後續提醒。</Text>
+          <Title level={3} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>{t('tradeAdjust.title')}</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>
+            {symbol
+              ? t('tradeAdjust.subtitle.withSymbol', { action: actionLabel, symbol })
+              : t('tradeAdjust.subtitle.generic')}
+          </Text>
+        </div>
+
+        <div className="mobile-feature-grid">
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">Exec</div>
+            <div className="mobile-feature-label">{t('tradeAdjust.feature.fill')}</div>
+          </div>
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">Sync</div>
+            <div className="mobile-feature-label">{t('tradeAdjust.feature.sync')}</div>
+          </div>
+          <div className="mobile-feature-card">
+            <div className="mobile-feature-value">Alert</div>
+            <div className="mobile-feature-label">{t('tradeAdjust.feature.alert')}</div>
+          </div>
+        </div>
+
+        <div className="mobile-info-banner">
+          {t('tradeAdjust.info')}
         </div>
 
         {error && (
@@ -102,22 +135,23 @@ export default function TradeAdjustPage() {
         <Form layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="actual_shares"
-            label="實際成交股數"
-            rules={[{ required: true, message: '請輸入成交股數' }]}
+            label={t('tradeAdjust.form.executedShares')}
+            rules={[{ required: true, message: t('tradeAdjust.form.executedSharesRequired') }]}
           >
             <InputNumber
               size="large"
               style={{ width: '100%' }}
-              min={0.001}
+              min={1}
               step={1}
-              placeholder="例如：28"
+              precision={0}
+              placeholder={t('tradeAdjust.form.executedSharesPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="actual_price"
-            label="實際成交均價"
-            rules={[{ required: true, message: '請輸入成交均價' }]}
+            label={t('tradeAdjust.form.averagePrice')}
+            rules={[{ required: true, message: t('tradeAdjust.form.averagePriceRequired') }]}
           >
             <InputNumber
               size="large"
@@ -125,7 +159,7 @@ export default function TradeAdjustPage() {
               min={0.01}
               step={0.01}
               prefix="$"
-              placeholder="例如：178.50"
+              placeholder={t('tradeAdjust.form.averagePricePlaceholder')}
               formatter={v => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={v => parseFloat((v ?? '').replace(/,/g, '')) as never}
             />
@@ -139,9 +173,14 @@ export default function TradeAdjustPage() {
             loading={submitting}
             style={{ height: 48, fontSize: 16 }}
           >
-            提交確認
+            {t('tradeAdjust.submit')}
           </Button>
         </Form>
+
+        <div className="mobile-helper-list">
+          <div className="mobile-helper-item">{t('tradeAdjust.helper.average')}</div>
+          <div className="mobile-helper-item">{t('tradeAdjust.helper.validLink')}</div>
+        </div>
       </div>
     </div>
   );

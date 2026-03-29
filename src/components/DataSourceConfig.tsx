@@ -17,7 +17,7 @@ export const DataSourceConfig: React.FC<Props> = ({ onUpdate }) => {
 
   const assetTypeColors: Record<string, string> = {
     crypto:  'gold',
-    equity:  'blue',
+    equity:  'green',
     etf:     'cyan',
     futures: 'orange',
     index:   'purple',
@@ -26,25 +26,25 @@ export const DataSourceConfig: React.FC<Props> = ({ onUpdate }) => {
 
   return (
     <>
-      <Tooltip title="数据源配置">
+      <Tooltip title="Data Source Settings">
         <Button size="small" icon={<DatabaseOutlined/>} onClick={() => setOpen(true)} style={{ fontSize: 11 }}>
-          数据源
+          Data Sources
         </Button>
       </Tooltip>
 
       <Modal
         open={open}
         onCancel={() => setOpen(false)}
-        footer={<Button type="primary" onClick={() => setOpen(false)}>关闭</Button>}
+        footer={<Button type="primary" onClick={() => setOpen(false)}>Close</Button>}
         title={
           <Space>
             <DatabaseOutlined/>
-            <span>数据源配置</span>
+            <span>Data Source Settings</span>
           </Space>
         }
         width={500}
       >
-        <Title level={5} style={{ marginBottom: 12 }}>已注册适配器</Title>
+        <Title level={5} style={{ marginBottom: 12 }}>Registered Adapters</Title>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {adapters.map(a => (
             <div
@@ -52,8 +52,8 @@ export const DataSourceConfig: React.FC<Props> = ({ onUpdate }) => {
               style={{
                 padding: '10px 14px',
                 borderRadius: 8,
-                border: `1px solid ${a.disabled ? '#21262d' : '#30363d'}`,
-                background: a.disabled ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${a.disabled ? 'rgba(93, 187, 123, 0.14)' : 'rgba(93, 187, 123, 0.22)'}`,
+                background: a.disabled ? '#f7fbf8' : '#ffffff',
                 opacity: a.disabled ? 0.5 : 1,
                 transition: 'all .15s',
               }}
@@ -61,7 +61,7 @@ export const DataSourceConfig: React.FC<Props> = ({ onUpdate }) => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <Text strong style={{ fontSize: 13 }}>{a.name}</Text>
-                  <Tag style={{ marginLeft: 8, fontSize: 10 }}>优先级 {a.priority}</Tag>
+                  <Tag style={{ marginLeft: 8, fontSize: 10 }}>Priority {a.priority}</Tag>
                 </div>
                 <Switch
                   size="small"
@@ -83,14 +83,14 @@ export const DataSourceConfig: React.FC<Props> = ({ onUpdate }) => {
 
         <Divider style={{ margin: '16px 0' }}/>
 
-        <Title level={5} style={{ marginBottom: 8 }}>自动降级链</Title>
-        <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.7 }}>
-          <div>🔐 <strong style={{ color: '#e6edf3' }}>加密货币</strong>：Binance → Yahoo</div>
-          <div>📈 <strong style={{ color: '#e6edf3' }}>美股/ETF/指数</strong>：Polygon → Yahoo</div>
-          <div>🌍 <strong style={{ color: '#e6edf3' }}>其他</strong>：Yahoo（直连或本地代理）</div>
-          <div style={{ marginTop: 8, color: '#484f58' }}>
-            所有请求优先读取本地缓存（60s TTL），缓存过期后才拉取新数据。
-            历史 K 线同步写入 IndexedDB + 服务端 SQLite（需启动 server.ts）。
+        <Title level={5} style={{ marginBottom: 8 }}>Automatic Fallback Chain</Title>
+        <div style={{ fontSize: 12, color: '#5f7a6a', lineHeight: 1.7 }}>
+          <div>🔐 <strong style={{ color: '#183024' }}>Crypto</strong>: Binance → Yahoo</div>
+          <div>📈 <strong style={{ color: '#183024' }}>US Equities / ETF / Index</strong>: Polygon → Yahoo</div>
+          <div>🌍 <strong style={{ color: '#183024' }}>Other</strong>: Yahoo (direct or local proxy)</div>
+          <div style={{ marginTop: 8, color: '#7b9586' }}>
+            All requests read from local cache first (60s TTL) and only fetch fresh data after expiry.
+            Historical bars are written to IndexedDB and server-side SQLite when server.ts is running.
           </div>
         </div>
       </Modal>

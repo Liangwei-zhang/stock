@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Typography, List, Switch, Button, Modal, Input,
-  Spin, message, Empty, Slider, Tag, Popconfirm,
+  Spin, message, Empty, Tag, Popconfirm,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { BellOutlined, ClockCircleOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, StarOutlined } from '@ant-design/icons';
 import { useAuth, useApi } from '../hooks/useAuth';
 import { BottomNav } from '../components/BottomNav';
+import { useI18n } from '../i18n';
 
 const { Title, Text } = Typography;
 
@@ -14,7 +15,6 @@ interface WatchItem {
   id: string;
   symbol: string;
   notify: boolean;
-  min_score: number;
   created_at: string;
 }
 
@@ -30,20 +30,11 @@ interface SearchResponse {
   query: string;
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#0d0d0d', color: '#fff', paddingBottom: 70 },
-  header: { padding: '20px 16px 12px', background: '#141414', borderBottom: '1px solid #1f1f1f', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  section: { padding: '0 16px' },
-  item: { background: '#141414', borderRadius: 10, padding: '12px 16px', margin: '10px 0' },
-  row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  subtext: { fontSize: 12, color: '#8c8c8c' },
-  scoreLabel: { fontSize: 11, color: '#faad14' },
-};
-
 export const WatchlistPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const apiFetch = useApi();
+  const { t, formatDate } = useI18n();
 
   const [items, setItems] = useState<WatchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +42,6 @@ export const WatchlistPage: React.FC = () => {
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [minScore, setMinScore] = useState(65);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
@@ -62,7 +52,7 @@ export const WatchlistPage: React.FC = () => {
     setLoading(true);
     apiFetch<WatchItem[]>('/api/watchlist')
       .then(setItems)
-      .catch(() => message.error('載入關注列表失敗'))
+      .catch(() => message.error(t('watchlist.loadFailed')))
       .finally(() => setLoading(false));
   };
 
@@ -85,15 +75,15 @@ export const WatchlistPage: React.FC = () => {
     try {
       await apiFetch('/api/watchlist', {
         method: 'POST',
-        body: JSON.stringify({ symbol: sr.symbol, min_score: minScore, notify: true }),
+        body: JSON.stringify({ symbol: sr.symbol, notify: true }),
       });
-      message.success(`已添加 ${sr.symbol}`);
+      message.success(t('watchlist.addSuccess', { symbol: sr.symbol }));
       setSearchOpen(false);
       setSearchQ('');
       setSearchResults([]);
       load();
     } catch (err: any) {
-      message.error(err.message || '添加失敗');
+      message.error(err.message || t('watchlist.addFailed'));
     }
   };
 
@@ -105,115 +95,150 @@ export const WatchlistPage: React.FC = () => {
       });
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, notify } : i));
     } catch {
-      message.error('更新失敗');
+      message.error(t('watchlist.updateFailed'));
     }
   };
 
   const handleDelete = async (id: string, symbol: string) => {
     try {
       await apiFetch(`/api/watchlist/${id}`, { method: 'DELETE' });
-      message.success(`已移除 ${symbol}`);
+      message.success(t('watchlist.removeSuccess', { symbol }));
       setItems(prev => prev.filter(i => i.id !== id));
     } catch {
-      message.error('刪除失敗');
+      message.error(t('watchlist.removeFailed'));
     }
   };
+
+  const fmtDate = (value: string) =>
+    formatDate(value, { month: 'short', day: 'numeric' });
+
+  const alertsEnabled = items.filter(item => item.notify).length;
+  const latestAdd = items.length > 0
+    ? [...items].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))[0]
+    : null;
 
   return (
     <div className="mobile-shell">
       <div className="mobile-shell__inner">
-      <div className="mobile-page-header mobile-page-header--split">
-        <div>
-          <div className="mobile-eyebrow">Signal Watchlist</div>
-          <Title level={2} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>我的關注</Title>
-          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>建立高優先級追蹤名單，控制每個標的的提醒靈敏度與推送開關。</Text>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="middle"
-          onClick={() => setSearchOpen(true)}
-        >
-          添加
-        </Button>
-      </div>
-
-      <div className="mobile-panel">
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
-        ) : items.length === 0 ? (
-          <div className="mobile-empty"><Empty description="暫無關注" style={{ padding: 20, color: '#595959' }} /></div>
-        ) : (
-          <div className="mobile-list">
-          {items.map(item => (
-            <div key={item.id} className="mobile-list-card mobile-list-card--active">
-              <div style={styles.row}>
-                <Text strong style={{ color: '#fff', fontSize: 16 }}>{item.symbol}</Text>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Switch
-                    size="small"
-                    checked={item.notify}
-                    onChange={(v) => handleToggleNotify(item, v)}
-                  />
-                  <Popconfirm
-                    title={`確認移除 ${item.symbol}？`}
-                    onConfirm={() => handleDelete(item.id, item.symbol)}
-                    okText="移除"
-                    cancelText="取消"
-                  >
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      size="small"
-                    />
-                  </Popconfirm>
-                </div>
-              </div>
-              <div style={styles.row}>
-                <Text style={styles.subtext}>
-                  {item.notify ? '推送開啟' : '推送關閉'}
-                </Text>
-                <Text style={styles.scoreLabel}>
-                  靈敏度 ≥ {item.min_score}
-                </Text>
-              </div>
+        <div className="mobile-premium-hero">
+          <div className="mobile-premium-hero__top">
+            <div className="mobile-premium-hero__copy">
+              <div className="mobile-eyebrow">{t('watchlist.eyebrow')}</div>
+              <Title level={2} className="mobile-page-title" style={{ fontSize: 32, margin: 0 }}>
+                {t('watchlist.title')}
+              </Title>
+              <Text className="mobile-page-subtitle" style={{ display: 'block' }}>
+                {t('watchlist.subtitle')}
+              </Text>
             </div>
-          ))}
+            <div className="mobile-premium-hero__actions">
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setSearchOpen(true)}>
+                {t('watchlist.addSymbol')}
+              </Button>
+              <Button className="mobile-ghost-action" icon={<BellOutlined />} onClick={() => navigate('/notifications')}>
+                {t('watchlist.inbox')}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+          <div className="mobile-inline-metrics">
+            <span className="mobile-inline-metric">{t('watchlist.metric.tracked')} <strong>{items.length}</strong></span>
+            <span className="mobile-inline-metric">{t('watchlist.metric.alerts')} <strong>{alertsEnabled}</strong></span>
+            <span className="mobile-inline-metric">{t('watchlist.metric.latest')} <strong>{latestAdd ? latestAdd.symbol : '—'}</strong></span>
+          </div>
+        </div>
+
+        <div className="mobile-summary-grid">
+          <div className="mobile-summary-card">
+            <div className="mobile-summary-label">{t('watchlist.summary.tracked')}</div>
+            <div className="mobile-summary-value">{items.length}</div>
+            <div className="mobile-summary-caption">{t('watchlist.summary.tracked.caption')}</div>
+          </div>
+          <div className="mobile-summary-card">
+            <div className="mobile-summary-label">{t('watchlist.summary.alertsOn')}</div>
+            <div className="mobile-summary-value">{alertsEnabled}</div>
+            <div className="mobile-summary-caption">{t('watchlist.summary.alertsOn.caption')}</div>
+          </div>
+          <div className="mobile-summary-card">
+            <div className="mobile-summary-label">{t('watchlist.summary.latestAdd')}</div>
+            <div className="mobile-summary-value">{latestAdd ? latestAdd.symbol : '—'}</div>
+            <div className="mobile-summary-caption">{latestAdd ? t('watchlist.summary.latestAdd.caption', { date: fmtDate(latestAdd.created_at) }) : t('watchlist.summary.latestAdd.empty')}</div>
+          </div>
+        </div>
+
+        <div className="mobile-panel mobile-panel--highlight">
+          <div className="mobile-section-header">
+            <div>
+              <div className="mobile-section-title">{t('watchlist.section.title')}</div>
+              <div className="mobile-section-note">{t('watchlist.section.note')}</div>
+            </div>
+            <span className="mobile-soft-tag"><StarOutlined /> {t('watchlist.section.tag')}</span>
+          </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+          ) : items.length === 0 ? (
+            <div className="mobile-empty">
+              <Empty description={t('watchlist.empty.title')} style={{ padding: 20, color: '#7b9586' }} />
+              <Button type="primary" onClick={() => setSearchOpen(true)}>{t('watchlist.empty.action')}</Button>
+            </div>
+          ) : (
+            <div className="mobile-list">
+              {items.map(item => (
+                <div key={item.id} className="mobile-list-card mobile-list-card--active">
+                  <div className="mobile-list-row">
+                    <div>
+                      <Text strong className="mobile-symbol">{item.symbol}</Text>
+                      <div className="mobile-allocation-meta" style={{ marginTop: 6 }}>
+                        <span>{item.notify ? t('watchlist.item.alertsEnabled') : t('watchlist.item.alertsPaused')}</span>
+                        <span>{t('watchlist.item.added', { date: fmtDate(item.created_at) })}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Switch
+                        size="small"
+                        checked={item.notify}
+                        onChange={(value) => handleToggleNotify(item, value)}
+                      />
+                      <Popconfirm
+                        title={t('watchlist.removeConfirm', { symbol: item.symbol })}
+                        onConfirm={() => handleDelete(item.id, item.symbol)}
+                        okText={t('common.remove')}
+                        cancelText={t('common.cancel')}
+                      >
+                        <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                      </Popconfirm>
+                    </div>
+                  </div>
+                  <div className="mobile-chip-row" style={{ marginTop: 12 }}>
+                    <span className="mobile-soft-tag mobile-soft-tag--list">
+                      <BellOutlined /> {item.notify ? t('watchlist.tag.alertsOn') : t('watchlist.tag.alertsOff')}
+                    </span>
+                    <span className="mobile-soft-tag mobile-soft-tag--list">
+                      <ClockCircleOutlined /> {fmtDate(item.created_at)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 搜索添加彈窗 */}
       <Modal
         open={searchOpen}
-        title="搜索標的"
+        title={t('watchlist.search.title')}
         footer={null}
         rootClassName="mobile-modal"
         onCancel={() => { setSearchOpen(false); setSearchQ(''); setSearchResults([]); }}
-        styles={{ content: { background: '#141414' }, header: { background: '#141414', color: '#fff' } }}
+        styles={{ content: { background: '#ffffff' }, header: { background: '#ffffff', color: '#183024' } }}
       >
-        <div style={{ marginBottom: 12 }}>
-          <Text style={{ color: '#8c8c8c', fontSize: 12 }}>靈敏度（最低信號分）：{minScore}</Text>
-          <Slider
-            min={50}
-            max={90}
-            step={5}
-            value={minScore}
-            onChange={setMinScore}
-            marks={{ 50: '50', 65: '65', 75: '75', 90: '90' }}
-          />
-        </div>
-
         <Input
           prefix={<SearchOutlined />}
-          placeholder="輸入股票代碼，如 AAPL、BTC..."
+          placeholder={t('watchlist.search.placeholder')}
           value={searchQ}
           onChange={e => handleSearch(e.target.value)}
           allowClear
           autoFocus
-          style={{ background: '#1f1f1f', border: '1px solid #303030', color: '#fff' }}
+          style={{ background: '#ffffff', border: '1px solid rgba(93, 187, 123, 0.18)', color: '#183024' }}
         />
 
         {searching && <div style={{ textAlign: 'center', padding: 16 }}><Spin size="small" /></div>}
@@ -221,15 +246,17 @@ export const WatchlistPage: React.FC = () => {
         <List
           style={{ marginTop: 8, maxHeight: 300, overflowY: 'auto' }}
           dataSource={searchResults}
+          locale={{ emptyText: searchQ ? t('watchlist.search.empty') : t('watchlist.search.start') }}
           renderItem={sr => (
             <List.Item
-              style={{ cursor: 'pointer', padding: '10px 0', borderBottom: '1px solid #1f1f1f' }}
+              style={{ cursor: 'pointer', padding: '10px 0', borderBottom: '1px solid rgba(93, 187, 123, 0.14)' }}
               onClick={() => handleAdd(sr)}
             >
               <div>
-                <Text strong style={{ color: '#fff' }}>{sr.symbol}</Text>
-                <Text style={{ color: '#8c8c8c', marginLeft: 8, fontSize: 13 }}>{sr.name}</Text>
-                <Tag style={{ marginLeft: 8 }} color="blue">{sr.asset_type}</Tag>
+                <Text strong style={{ color: '#183024' }}>{sr.symbol}</Text>
+                <Text style={{ color: '#5f7a6a', marginLeft: 8, fontSize: 13 }}>{sr.name}</Text>
+                <Tag style={{ marginLeft: 8 }} color="green">{sr.asset_type}</Tag>
+                {sr.exchange && <Tag style={{ marginLeft: 8 }} color="default">{sr.exchange}</Tag>}
               </div>
             </List.Item>
           )}

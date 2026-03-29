@@ -13,46 +13,46 @@ const BACKEND_SEARCH = '/api/search';
 // ─── 热门资产预设（无网络时展示）─────────────────────────────────────────────
 
 export const POPULAR_ASSETS: SearchResult[] = [
-  // 股票
-  { symbol: 'AAPL',  name: '苹果公司',         assetType: 'equity',  exchange: 'NMS' },
-  { symbol: 'TSLA',  name: '特斯拉',            assetType: 'equity',  exchange: 'NMS' },
-  { symbol: 'MSFT',  name: '微软公司',           assetType: 'equity',  exchange: 'NMS' },
-  { symbol: 'NVDA',  name: '英伟达',             assetType: 'equity',  exchange: 'NMS' },
+  // Equities
+  { symbol: 'AAPL',  name: 'Apple Inc.',                assetType: 'equity',  exchange: 'NMS' },
+  { symbol: 'TSLA',  name: 'Tesla',                     assetType: 'equity',  exchange: 'NMS' },
+  { symbol: 'MSFT',  name: 'Microsoft',                 assetType: 'equity',  exchange: 'NMS' },
+  { symbol: 'NVDA',  name: 'NVIDIA',                    assetType: 'equity',  exchange: 'NMS' },
   { symbol: 'GOOGL', name: 'Alphabet (Google)', assetType: 'equity',  exchange: 'NMS' },
-  { symbol: 'AMZN',  name: '亚马逊',             assetType: 'equity',  exchange: 'NMS' },
+  { symbol: 'AMZN',  name: 'Amazon',                    assetType: 'equity',  exchange: 'NMS' },
   { symbol: 'META',  name: 'Meta Platforms',    assetType: 'equity',  exchange: 'NMS' },
-  { symbol: 'BRK-B', name: '巴菲特伯克希尔B',    assetType: 'equity',  exchange: 'NYQ' },
-  // 贵金属 / 大宗商品期货
-  { symbol: 'GC=F',  name: '黄金期货 (COMEX)',   assetType: 'futures', exchange: 'CMX' },
-  { symbol: 'SI=F',  name: '白银期货 (COMEX)',   assetType: 'futures', exchange: 'CMX' },
-  { symbol: 'CL=F',  name: 'WTI 原油期货',      assetType: 'futures', exchange: 'NYM' },
-  { symbol: 'BZ=F',  name: 'Brent 原油期货',    assetType: 'futures', exchange: 'NYM' },
-  { symbol: 'NG=F',  name: '天然气期货',          assetType: 'futures', exchange: 'NYM' },
-  { symbol: 'HG=F',  name: '铜期货',              assetType: 'futures', exchange: 'CMX' },
-  { symbol: 'PL=F',  name: '铂金期货',            assetType: 'futures', exchange: 'NYM' },
+  { symbol: 'BRK-B', name: 'Berkshire Hathaway Class B', assetType: 'equity', exchange: 'NYQ' },
+  // Metals / commodity futures
+  { symbol: 'GC=F',  name: 'Gold Futures (COMEX)',      assetType: 'futures', exchange: 'CMX' },
+  { symbol: 'SI=F',  name: 'Silver Futures (COMEX)',    assetType: 'futures', exchange: 'CMX' },
+  { symbol: 'CL=F',  name: 'WTI Crude Oil Futures',     assetType: 'futures', exchange: 'NYM' },
+  { symbol: 'BZ=F',  name: 'Brent Crude Oil Futures',   assetType: 'futures', exchange: 'NYM' },
+  { symbol: 'NG=F',  name: 'Natural Gas Futures',       assetType: 'futures', exchange: 'NYM' },
+  { symbol: 'HG=F',  name: 'Copper Futures',            assetType: 'futures', exchange: 'CMX' },
+  { symbol: 'PL=F',  name: 'Platinum Futures',          assetType: 'futures', exchange: 'NYM' },
   // ETF
-  { symbol: 'GLD',   name: '黄金 ETF (SPDR)',    assetType: 'etf',     exchange: 'PCX' },
-  { symbol: 'SLV',   name: '白银 ETF (iShares)', assetType: 'etf',     exchange: 'PCX' },
-  { symbol: 'USO',   name: '原油 ETF (United)',  assetType: 'etf',     exchange: 'PCX' },
+  { symbol: 'GLD',   name: 'Gold ETF (SPDR)',          assetType: 'etf',     exchange: 'PCX' },
+  { symbol: 'SLV',   name: 'Silver ETF (iShares)',     assetType: 'etf',     exchange: 'PCX' },
+  { symbol: 'USO',   name: 'Oil ETF (United States)',  assetType: 'etf',     exchange: 'PCX' },
   { symbol: 'SPY',   name: 'S&P 500 ETF',        assetType: 'etf',     exchange: 'PCX' },
   { symbol: 'QQQ',   name: 'NASDAQ 100 ETF',     assetType: 'etf',     exchange: 'NMS' },
-  { symbol: 'IWM',   name: '罗素 2000 ETF',       assetType: 'etf',     exchange: 'PCX' },
-  { symbol: 'TLT',   name: '长期国债 ETF',         assetType: 'etf',     exchange: 'NMS' },
-  // 指数（只读行情，无法交易）
-  { symbol: '^GSPC', name: 'S&P 500 指数',       assetType: 'index',   exchange: 'SNP' },
-  { symbol: '^DJI',  name: '道琼斯工业指数',       assetType: 'index',   exchange: 'DJI' },
-  { symbol: '^IXIC', name: 'NASDAQ 综合指数',     assetType: 'index',   exchange: 'NIM' },
-  { symbol: '^VIX',  name: '恐慌指数 VIX',        assetType: 'index',   exchange: 'CBT' },
-  // 加密货币
-  { symbol: 'BTC',  name: '比特币 (Bitcoin)',    assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'ETH',  name: '以太坊 (Ethereum)',  assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'IWM',   name: 'Russell 2000 ETF',         assetType: 'etf',     exchange: 'PCX' },
+  { symbol: 'TLT',   name: 'Long-Term Treasury ETF',   assetType: 'etf',     exchange: 'NMS' },
+  // Indexes (read-only)
+  { symbol: '^GSPC', name: 'S&P 500 Index',            assetType: 'index',   exchange: 'SNP' },
+  { symbol: '^DJI',  name: 'Dow Jones Industrial Average', assetType: 'index', exchange: 'DJI' },
+  { symbol: '^IXIC', name: 'NASDAQ Composite Index',   assetType: 'index',   exchange: 'NIM' },
+  { symbol: '^VIX',  name: 'Volatility Index (VIX)',   assetType: 'index',   exchange: 'CBT' },
+  // Crypto
+  { symbol: 'BTC',  name: 'Bitcoin (BTC)',            assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'ETH',  name: 'Ethereum (ETH)',           assetType: 'crypto',  exchange: 'BINANCE' },
   { symbol: 'SOL',  name: 'Solana',             assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'BNB',  name: '币安币 (BNB)',       assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'XRP',  name: '瑞波币 (XRP)',        assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'DOGE', name: '狗狗币 (Dogecoin)',   assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'ADA',  name: '艾达币 (Cardano)',   assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'AVAX', name: '雪崩 (Avalanche)',   assetType: 'crypto',  exchange: 'BINANCE' },
-  { symbol: 'DOT',  name: '波卡 (Polkadot)',    assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'BNB',  name: 'BNB',                      assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'XRP',  name: 'XRP',                      assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'DOGE', name: 'Dogecoin (DOGE)',          assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'ADA',  name: 'Cardano (ADA)',            assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'AVAX', name: 'Avalanche (AVAX)',         assetType: 'crypto',  exchange: 'BINANCE' },
+  { symbol: 'DOT',  name: 'Polkadot (DOT)',           assetType: 'crypto',  exchange: 'BINANCE' },
 ];
 
 // ─── Yahoo quoteType → AssetType ─────────────────────────────────────────────
@@ -148,19 +148,19 @@ export async function getSymbolInfo(symbol: string): Promise<SearchResult | null
 /** 资产类型中文标签 */
 export function assetTypeLabel(t: AssetType): string {
   switch (t) {
-    case 'equity':  return '股票';
+    case 'equity':  return 'Equity';
     case 'etf':     return 'ETF';
-    case 'futures': return '期货';
-    case 'index':   return '指数';
-    case 'crypto':  return '加密';
-    default:        return '其他';
+    case 'futures': return 'Futures';
+    case 'index':   return 'Index';
+    case 'crypto':  return 'Crypto';
+    default:        return 'Other';
   }
 }
 
 /** 资产类型颜色（Ant Design Tag color） */
 export function assetTypeColor(t: AssetType): string {
   switch (t) {
-    case 'equity':  return 'blue';
+    case 'equity':  return 'green';
     case 'etf':     return 'cyan';
     case 'futures': return 'gold';
     case 'index':   return 'purple';

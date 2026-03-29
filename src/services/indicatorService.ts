@@ -65,7 +65,7 @@ class IndicatorService {
 
   getPrediction(symbol: string): PredictionResult {
     return this.analyzeStock(symbol)?.prediction
-      ?? { type: 'neutral', probability: 0, signals: [], recommendation: '数据不足，无法预测' };
+      ?? { type: 'neutral', probability: 0, signals: [], recommendation: 'Insufficient data for prediction' };
   }
 
   getIndicators(symbol: string): TechnicalIndicators | null {

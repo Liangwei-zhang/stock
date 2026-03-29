@@ -242,15 +242,15 @@ export function detectWhaleOrders(orderBook: {
  */
 export function getCryptoList(): { symbol: string; name: string }[] {
   return [
-    { symbol: 'BTC', name: '比特幣' },
-    { symbol: 'ETH', name: '以太坊' },
+    { symbol: 'BTC', name: 'Bitcoin' },
+    { symbol: 'ETH', name: 'Ethereum' },
     { symbol: 'SOL', name: 'Solana' },
-    { symbol: 'BNB', name: '幣安幣' },
-    { symbol: 'XRP', name: '瑞波幣' },
-    { symbol: 'DOGE', name: '狗狗幣' },
-    { symbol: 'ADA', name: '艾達幣' },
-    { symbol: 'AVAX', name: '雪崩' },
-    { symbol: 'DOT', name: '波卡' },
+    { symbol: 'BNB', name: 'BNB' },
+    { symbol: 'XRP', name: 'XRP' },
+    { symbol: 'DOGE', name: 'Dogecoin' },
+    { symbol: 'ADA', name: 'Cardano' },
+    { symbol: 'AVAX', name: 'Avalanche' },
+    { symbol: 'DOT', name: 'Polkadot' },
     { symbol: 'MATIC', name: 'Polygon' },
   ];
 }

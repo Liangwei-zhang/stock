@@ -1,6 +1,5 @@
 /**
- * ErrorBoundary.tsx — 全局 React 错误捕获
- * 防止任何子组件崩溃导致整个应用白屏
+ * ErrorBoundary.tsx - global React error boundary
  */
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Result } from 'antd';
@@ -34,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
       localStorage.setItem('error_log', JSON.stringify(prev.slice(0, 20)));
     } catch {}
 
-    // 先嘗試自動恢復（不清緩存），連續失敗 MAX_AUTO_RETRIES 次再提示用戶
+    // Try automatic recovery before prompting the user.
     if (this.state.retryCount < MAX_AUTO_RETRIES) {
       setTimeout(() => {
         this.setState(s => ({ hasError: false, error: null, componentStack: '', retryCount: s.retryCount + 1 }));
@@ -57,19 +56,19 @@ export class ErrorBoundary extends Component<Props, State> {
         <div style={{ padding: 40 }}>
           <Result
             status="error"
-            title="應用發生錯誤"
-            subTitle={this.state.error?.message || '未知錯誤'}
+            title="Application Error"
+            subTitle={this.state.error?.message || 'Unknown error'}
             extra={[
               <Button type="primary" key="reload" onClick={() => window.location.reload()}>
-                重新加載
+                Reload
               </Button>,
               <Button key="reset" onClick={this.clearAllCache}>
-                清空緩存並重載
+                Clear Cache and Reload
               </Button>,
             ]}
           />
           <details style={{ marginTop: 16, fontSize: 12, color: '#666' }}>
-            <summary>錯誤詳情</summary>
+            <summary>Error Details</summary>
             <pre style={{ overflow: 'auto', maxHeight: 200 }}>{this.state.error?.stack}</pre>
             {this.state.componentStack && (
               <pre style={{ overflow: 'auto', maxHeight: 100, marginTop: 8 }}>

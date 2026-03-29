@@ -35,14 +35,14 @@ export function useChart({ selectedStock, refreshKey }: UseChartOptions) {
     disposedRef.current = false;
 
     const nc = createChart(chartContainer, {
-      layout:          { background: { color: '#0f1419' }, textColor: '#8b949e' },
-      grid:            { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
-      timeScale:       { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
+      layout:          { background: { color: '#ffffff' }, textColor: '#5f7a6a' },
+      grid:            { vertLines: { color: 'rgba(103, 201, 138, 0.08)' }, horzLines: { color: 'rgba(103, 201, 138, 0.08)' } },
+      timeScale:       { borderColor: 'rgba(103, 201, 138, 0.18)', timeVisible: true },
+      rightPriceScale: { borderColor: 'rgba(103, 201, 138, 0.18)' },
     });
 
     const cs  = nc.addCandlestickSeries({ upColor: '#52c41a', downColor: '#ff4d4f', borderUpColor: '#52c41a', borderDownColor: '#ff4d4f', wickUpColor: '#52c41a', wickDownColor: '#ff4d4f' });
-    const m5  = nc.addLineSeries({ color: '#1890ff', lineWidth: 1, title: 'MA5' });
+    const m5  = nc.addLineSeries({ color: '#77d7a2', lineWidth: 1, title: 'MA5' });
     const m10 = nc.addLineSeries({ color: '#faad14', lineWidth: 1, title: 'MA10' });
     const m20 = nc.addLineSeries({ color: '#722ed1', lineWidth: 1, title: 'MA20' });
 

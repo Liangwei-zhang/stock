@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Result } from 'antd';
+import { useI18n } from '../i18n';
 
 /**
  * TradeSuccessPage — 郵件確認連結的落地頁
@@ -9,41 +10,43 @@ import { Button, Result } from 'antd';
 export const TradeSuccessPage: React.FC = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const action = params.get('action') ?? 'confirmed';
   const symbol = params.get('symbol') ?? '';
+  const symbolLabel = symbol ? symbol : '';
 
   const config =
     action === 'ignored'
       ? {
           status: 'info' as const,
-          title: '已忽略本次建議',
-          subtitle: `${symbol ? `${symbol} ` : ''}此次交易建議已標記為忽略，持倉不會有任何變動。`,
+          title: t('tradeSuccess.ignored.title'),
+          subtitle: t('tradeSuccess.ignored.subtitle', { symbol: symbolLabel }),
         }
       : action === 'adjusted'
       ? {
           status: 'success' as const,
-          title: '已提交調整',
-          subtitle: `${symbol ? `${symbol} ` : ''}實際操作已記錄，持倉已按您的實際數量更新。`,
+          title: t('tradeSuccess.adjusted.title'),
+          subtitle: t('tradeSuccess.adjusted.subtitle', { symbol: symbolLabel }),
         }
       : {
           status: 'success' as const,
-          title: '交易確認成功',
-          subtitle: `${symbol ? `${symbol} ` : ''}持倉已按建議自動更新，感謝您的確認。`,
+          title: t('tradeSuccess.confirmed.title'),
+          subtitle: t('tradeSuccess.confirmed.subtitle', { symbol: symbolLabel }),
         };
 
   return (
     <div className="mobile-result-shell">
       <Result
         status={config.status}
-        title={<span style={{ color: '#fff' }}>{config.title}</span>}
-        subTitle={<span style={{ color: '#8c8c8c' }}>{config.subtitle}</span>}
+        title={<span style={{ color: '#183024' }}>{config.title}</span>}
+        subTitle={<span style={{ color: '#5f7a6a' }}>{config.subtitle}</span>}
         extra={[
           <Button
             key="home"
             type="primary"
             onClick={() => navigate('/')}
           >
-            查看帳戶
+            {t('tradeSuccess.openHome')}
           </Button>,
         ]}
         className="mobile-result-card"

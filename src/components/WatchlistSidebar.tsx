@@ -71,12 +71,13 @@ const WatchlistItemRow: React.FC<{
   selectedStock: string;
   onSelect: (symbol: string) => void;
   onRemove: (symbol: string, e: React.MouseEvent) => void;
-}> = ({ stockRow: { stock: s, buy, sell }, selectedStock, onSelect, onRemove }) => {
+}> = ({ stockRow: { stock: s, buy, sell, source }, selectedStock, onSelect, onRemove }) => {
   const prevPriceRef = useRef(s.price);
   const priceRef     = useRef<HTMLSpanElement>(null);
   const atCfg        = autoTradeService.getConfig();
   const symOn        = atCfg.symbolsEnabled[s.symbol] ?? false;
   const active       = atCfg.enabled && symOn;
+  const live         = source === 'real';
 
   useEffect(() => {
     const el = priceRef.current;
@@ -97,7 +98,10 @@ const WatchlistItemRow: React.FC<{
       onClick={() => onSelect(s.symbol)}
     >
       <div className="wi-top">
-        <span className="wi-symbol">{s.symbol}</span>
+        <span className="wi-symbol-group">
+          <span className={`wi-source-dot ${live ? 'live' : 'sim'}`}/>
+          <span className="wi-symbol">{s.symbol}</span>
+        </span>
         <span ref={priceRef} className="wi-price">${fmtPrice(s.price)}</span>
       </div>
       <div className="wi-bottom">
@@ -111,19 +115,19 @@ const WatchlistItemRow: React.FC<{
         {buy?.signal && (
           <Tag color={buy.level === 'high' ? 'green' : 'lime'}
             style={{ margin: 0, fontSize: 9, padding: '0 4px', lineHeight: '16px' }}>
-            買{buy.score}
+            Buy {buy.score}
           </Tag>
         )}
         {sell?.signal && (
           <Tag color={sell.level === 'high' ? 'red' : 'volcano'}
             style={{ margin: 0, fontSize: 9, padding: '0 4px', lineHeight: '16px' }}>
-            賣{sell.score}
+            Sell {sell.score}
           </Tag>
         )}
         {active && <span className="wi-at-badge">⚡</span>}
-        <Tooltip title="移除">
+        <Tooltip title="Remove">
           <span
-            style={{ marginLeft: 'auto', cursor: 'pointer', color: '#484f58', fontSize: 10 }}
+            className="watchlist-remove"
             onClick={e => onRemove(s.symbol, e)}
           >✕</span>
         </Tooltip>
@@ -133,26 +137,49 @@ const WatchlistItemRow: React.FC<{
 };
 
 export const WatchlistSidebar: React.FC<Props> = ({
-  stocks, selectedStock, onSelect, onRemove, onAddClick,
+  stocks, watchlistItems, selectedStock, onSelect, onRemove, onAddClick,
 }) => {
+  const atCfg = autoTradeService.getConfig();
+  const risingCount = stocks.filter(row => row.stock.changePercent >= 0).length;
+  const monitoringCount = atCfg.enabled
+    ? watchlistItems.filter(item => atCfg.symbolsEnabled[item.symbol]).length
+    : 0;
+
   return (
     <div className="watchlist-sidebar">
       <div className="sidebar-header">
-        <Text className="sidebar-header-title">
-          自選股 {stocks.length > 0 && `· ${stocks.length}`}
-        </Text>
+        <div>
+          <Text className="sidebar-header-title">
+            自選股 {stocks.length > 0 && `· ${stocks.length}`}
+          </Text>
+          <div className="sidebar-header-subtitle">集中查看價格節奏、訊號與自動監控狀態</div>
+        </div>
         <Button
+          className="sidebar-add-button"
           type="text" size="small" icon={<PlusOutlined/>}
           onClick={onAddClick}
-          style={{ color: '#484f58', padding: 0 }}
+          style={{ padding: 0 }}
         />
+      </div>
+
+      <div className="sidebar-overview">
+        <div className="sidebar-overview-card">
+          <span className="sidebar-overview-value">{risingCount}</span>
+          <span className="sidebar-overview-label">上漲標的</span>
+        </div>
+        <div className="sidebar-overview-card">
+          <span className="sidebar-overview-value">{monitoringCount}</span>
+          <span className="sidebar-overview-label">自動監控</span>
+        </div>
       </div>
 
       <div className="watchlist-items">
         {stocks.length === 0 ? (
-          <div style={{ padding: '30px 10px', textAlign: 'center', color: '#484f58', fontSize: 12 }}>
-            <div style={{ marginBottom: 8, fontSize: 20 }}>📋</div>
-            點擊 + 添加資產
+          <div className="watchlist-empty">
+            <div className="watchlist-empty-icon">📋</div>
+            <div className="watchlist-empty-title">建立第一批觀察名單</div>
+            <div className="watchlist-empty-subtitle">新增股票後，左側會即時顯示漲跌、火花線與信號強度。</div>
+            <Button type="primary" size="small" onClick={onAddClick}>添加首支資產</Button>
           </div>
         ) : stocks.map(row => (
           <WatchlistItemRow

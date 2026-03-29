@@ -17,14 +17,18 @@ import { sendVerificationCode } from '../services/emailService.js';
 
 const router = Router();
 
+const supportedLocales = ['en-US', 'zh-CN', 'zh-TW'] as const;
+
 // ── Schema ──
 const sendCodeSchema = z.object({
-  email: z.string().email('請輸入有效的郵箱地址'),
+  email: z.string().email('Please enter a valid email address'),
 });
 
 const verifySchema = z.object({
   email: z.string().email(),
-  code: z.string().length(6, '驗證碼為 6 位數字'),
+  code: z.string().length(6, 'Verification code must be 6 digits'),
+  locale: z.enum(supportedLocales).optional(),
+  timezone: z.string().optional(),
 });
 
 /**
@@ -42,7 +46,7 @@ router.post(
     // 同 email 60 秒限流
     if (await isCodeRateLimited(email)) {
       return res.status(429).json({
-        error: '驗證碼已發送，請等待 60 秒後再試',
+        error: 'A code was already sent. Please wait 60 seconds before trying again.',
       });
     }
 
@@ -51,7 +55,7 @@ router.post(
     const { devCode } = await sendVerificationCode(email, code);
 
     res.json({
-      message: devCode ? '驗證碼已產生（未配置郵件服務）' : '驗證碼已發送，請查收郵件',
+      message: devCode ? 'Verification code generated (email service not configured)' : 'Verification code sent. Please check your inbox.',
       ...(devCode ? { devCode } : {}),
     });
   })
@@ -66,16 +70,21 @@ router.post(
   rateLimiter(20, 60),
   validate(verifySchema),
   asyncHandler(async (req, res) => {
-    const { email, code } = req.body as { email: string; code: string };
+    const { email, code, locale, timezone } = req.body as {
+      email: string;
+      code: string;
+      locale?: (typeof supportedLocales)[number];
+      timezone?: string;
+    };
 
     const valid = await verifyEmailCode(email, code);
     if (!valid) {
-      return res.status(400).json({ error: '驗證碼錯誤或已過期' });
+      return res.status(400).json({ error: 'Invalid or expired verification code' });
     }
 
-    const user = await upsertUser(email);
+    const user = await upsertUser(email, { locale, timezone });
     if (!user.is_active) {
-      return res.status(403).json({ error: '帳號已被停用' });
+      return res.status(403).json({ error: 'This account has been disabled' });
     }
 
     const deviceInfo = {
@@ -106,7 +115,7 @@ router.post(
 router.post('/logout', authMiddleware, asyncHandler(async (req, res) => {
   const token = req.headers.authorization!.slice(7);
   await revokeSession(token);
-  res.json({ message: '已登出' });
+  res.json({ message: 'Signed out successfully' });
 }));
 
 export default router;

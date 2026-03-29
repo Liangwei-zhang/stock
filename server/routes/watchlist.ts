@@ -61,7 +61,7 @@ router.post('/', validate(addSchema), asyncHandler(async (req, res) => {
   ]);
   if (Number(countRow?.count ?? 0) >= max) {
     return res.status(400).json({
-      error: `關注數已達上限（${max} 個）`,
+      error: `Watchlist limit reached (${max} symbols)`,
     });
   }
 
@@ -100,7 +100,7 @@ router.put('/:id', validate(updateSchema), asyncHandler(async (req, res) => {
   if (body.notify !== undefined)    { params.push(body.notify);    updates.push(`notify = $${params.length}`);    }
 
   if (updates.length === 0) {
-    return res.status(400).json({ error: '無有效更新字段' });
+    return res.status(400).json({ error: 'No valid fields to update' });
   }
 
   const row = await queryOne(
@@ -108,7 +108,7 @@ router.put('/:id', validate(updateSchema), asyncHandler(async (req, res) => {
      WHERE id = $1 AND user_id = $2 RETURNING *`,
     params
   );
-  if (!row) return res.status(404).json({ error: '關注項不存在' });
+  if (!row) return res.status(404).json({ error: 'Watchlist item not found' });
 
   await delCache('active_symbols');
   res.json(row);
@@ -123,10 +123,10 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     `DELETE FROM user_watchlist WHERE id = $1 AND user_id = $2 RETURNING symbol`,
     [id, userId]
   );
-  if (!row) return res.status(404).json({ error: '關注項不存在' });
+  if (!row) return res.status(404).json({ error: 'Watchlist item not found' });
 
   await delCache('active_symbols');
-  res.json({ message: '已刪除' });
+  res.json({ message: 'Deleted successfully' });
 }));
 
 export default router;

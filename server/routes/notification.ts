@@ -43,7 +43,7 @@ router.put('/read-all', asyncHandler(async (req, res) => {
     `UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
     [userId]
   );
-  res.json({ message: '全部標記為已讀' });
+  res.json({ message: 'All notifications marked as read' });
 }));
 
 /** PUT /api/notifications/:id/read */
@@ -56,7 +56,7 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
      WHERE id = $1 AND user_id = $2`,
     [id, userId]
   );
-  res.json({ message: '已標記為已讀' });
+  res.json({ message: 'Notification marked as read' });
 }));
 
 export default router;

@@ -81,14 +81,14 @@ class AutoTradeService {
     try {
       const raw = localStorage.getItem(LS_CONFIG_KEY);
       if (raw) return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-    } catch (e) { console.warn('[autoTradeService] loadConfig 失敗:', e); }
+    } catch (e) { console.warn('[autoTradeService] loadConfig failed:', e); }
     return { ...DEFAULT_CONFIG };
   }
 
   private saveConfig(): void {
     try {
       localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(this.config));
-    } catch (e) { console.warn('[autoTradeService] saveConfig 失敗:', e); }
+    } catch (e) { console.warn('[autoTradeService] saveConfig failed:', e); }
   }
 
   private restoreCooldowns(): void {
@@ -163,7 +163,7 @@ class AutoTradeService {
           await this.evaluate(symbol, analysis);
         } catch (e) {
           // 单个标的评估失败不阻断其他标的
-          console.warn(`[autoTradeService] evaluate(${symbol}) 失败:`, e);
+          console.warn(`[autoTradeService] evaluate(${symbol}) failed:`, e);
         }
       }
     } finally {
@@ -194,8 +194,8 @@ class AutoTradeService {
             tradingSimulator.updatePositionStop(symbol, entry);
             this.record({
               symbol, action: 'buy', price, qty: 0,
-              reason: `V7: 成本防護 – 已達 1.5R，止損移至入場價 $${entry.toFixed(2)}`,
-              score: 0, result: 'skipped', message: '止損已移至成本',
+              reason: `V7: breakeven protection - reached 1.5R, stop moved to entry $${entry.toFixed(2)}`,
+              score: 0, result: 'skipped', message: 'Stop moved to breakeven',
             });
           }
         }
@@ -207,7 +207,7 @@ class AutoTradeService {
       // 1. 卖出信号
       if (this.meetsLevel(sellSignal.level) && sellSignal.signal) {
         shouldSell = true;
-        sellReason = `賣出信號 ${sellSignal.score}分 | ${sellSignal.reasons[0] ?? ''}`;
+        sellReason = `Sell signal ${sellSignal.score}`;
         sellScore  = sellSignal.score;
       }
       // 2. 顶部预测
@@ -215,7 +215,7 @@ class AutoTradeService {
           && prediction.type === 'top'
           && prediction.probability >= this.config.minPredProb) {
         shouldSell = true;
-        sellReason = `頂部預測 ${(prediction.probability * 100).toFixed(0)}% | ${prediction.recommendation}`;
+        sellReason = `Top prediction ${(prediction.probability * 100).toFixed(0)}%`;
         sellScore  = Math.round(prediction.probability * 100);
       }
 
@@ -246,7 +246,7 @@ class AutoTradeService {
       // 1. 买入信号
       if (this.meetsLevel(buySignal.level) && buySignal.signal) {
         shouldBuy = true;
-        buyReason = `買入信號 ${buySignal.score}分 | ${buySignal.reasons[0] ?? ''}`;
+        buyReason = `Buy signal ${buySignal.score}`;
         buyScore  = buySignal.score;
       }
       // 2. 底部预测
@@ -254,7 +254,7 @@ class AutoTradeService {
           && prediction.type === 'bottom'
           && prediction.probability >= this.config.minPredProb) {
         shouldBuy = true;
-        buyReason = `底部預測 ${(prediction.probability * 100).toFixed(0)}% | ${prediction.recommendation}`;
+        buyReason = `Bottom prediction ${(prediction.probability * 100).toFixed(0)}%`;
         buyScore  = Math.round(prediction.probability * 100);
       }
 
@@ -269,7 +269,7 @@ class AutoTradeService {
         if (tpsl === null) {
           this.record({
             symbol, action: 'buy', price, qty: 0, reason: buyReason, score: buyScore,
-            result: 'skipped', message: `${this.config.exitMode.toUpperCase()}：無三重確認信號，跳過`,
+            result: 'skipped', message: `${this.config.exitMode.toUpperCase()}: skipped - no triple-confirmation signal`,
           });
           return;
         }
@@ -279,7 +279,7 @@ class AutoTradeService {
         if (this.config.exitMode === 'v6' || this.config.exitMode === 'v7') {
           const longConfirmed = (ind.sfpBull || ind.cvdBullDiv) && ind.chochBull;
           effectivePct = longConfirmed ? this.config.positionPct : this.config.positionPct * 0.5;
-          buyReason += longConfirmed ? ' | 🔒全確認' : ' | ⚡部分確認';
+          buyReason += longConfirmed ? ' | Full confirmation' : ' | Partial confirmation';
         }
 
         const qty = Math.floor((account.balance * effectivePct) / price * 10_000) / 10_000;
@@ -297,7 +297,7 @@ class AutoTradeService {
         } else {
           this.record({
             symbol, action: 'buy', price, qty: 0, reason: buyReason, score: buyScore,
-            result: 'skipped', message: '餘額不足，跳過',
+            result: 'skipped', message: 'Skipped due to insufficient balance',
           });
         }
       }

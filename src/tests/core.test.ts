@@ -396,7 +396,7 @@ describe('tradingSimulator — account management', () => {
   it('sell fails when no position exists', async () => {
     const result = await simulator.executeTrade({ symbol:'AAPL', type:'sell', price:150, reason:'test', confidence:80 }, 10);
     expect(result.success).toBe(false);
-    expect(result.message).toContain('無');
+    expect(result.message).toContain('No open');
   });
 
   it('buy fails when insufficient balance', async () => {
@@ -434,7 +434,7 @@ describe('tradingSimulator — account management', () => {
     const slPrice = pos.stopLoss - 100; // below stop
     const triggered = await simulator.checkStopLossTakeProfit(new Map([['BTC', slPrice]]));
     expect(triggered.length).toBe(1);
-    expect(triggered[0]).toContain('止損');
+    expect(triggered[0]).toContain('Stop triggered');
     expect(simulator.getPositions().length).toBe(0);
   });
 
@@ -444,7 +444,7 @@ describe('tradingSimulator — account management', () => {
     const tpPrice = pos.takeProfit + 100; // above TP
     const triggered = await simulator.checkStopLossTakeProfit(new Map([['BTC', tpPrice]]));
     expect(triggered.length).toBe(1);
-    expect(triggered[0]).toContain('止盈');
+    expect(triggered[0]).toContain('Target triggered');
   });
 
   it('totalValue = balance + positions value', async () => {

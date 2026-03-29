@@ -84,7 +84,10 @@ export async function verifyEmailCode(
 }
 
 /** 根據 email 取得或創建用戶 */
-export async function upsertUser(email: string): Promise<UserRecord> {
+export async function upsertUser(
+  email: string,
+  preferences: { locale?: string; timezone?: string } = {}
+): Promise<UserRecord> {
   const lEmail = email.toLowerCase();
   return transaction(async (client: PoolClient) => {
     // 先查
@@ -101,11 +104,13 @@ export async function upsertUser(email: string): Promise<UserRecord> {
       return existing.rows[0];
     }
     // 不存在則創建
+    const locale = preferences.locale ?? 'zh-CN';
+    const timezone = preferences.timezone ?? 'Asia/Shanghai';
     const { rows } = await client.query<UserRecord>(
-      `INSERT INTO users (email, last_login_at)
-       VALUES (lower($1), now())
+      `INSERT INTO users (email, last_login_at, locale, timezone)
+       VALUES (lower($1), now(), $2, $3)
        RETURNING *`,
-      [lEmail]
+      [lEmail, locale, timezone]
     );
     // 創建空資金帳戶（等待引導頁設置）
     await client.query(
