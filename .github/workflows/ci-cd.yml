@@ -1,0 +1,108 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────
+  # Job 1: 測試 + 構建（每次 push/PR 都跑）
+  # ─────────────────────────────────────────
+  ci:
+    name: 測試與構建
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 安裝依賴
+        run: npm ci
+
+      - name: 執行單元測試
+        run: npm test
+
+      - name: 構建前端（型別檢查 + Vite bundle）
+        run: npm run build
+
+      - name: 構建後端（tsc server）
+        run: npx tsc -p tsconfig.server.json
+
+  # ─────────────────────────────────────────
+  # Job 2: Docker 構建並推送到 GHCR
+  # 僅在 push main 且 CI 通過後執行
+  # ─────────────────────────────────────────
+  docker:
+    name: Docker 構建與推送
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 登入 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取 Docker 元數據（tag）
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: 構建並推送 Docker 鏡像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ─────────────────────────────────────────
+  # Job 3: SSH 部署到生產伺服器
+  # 需要設定 Secrets: SSH_HOST / SSH_USER / SSH_PRIVATE_KEY
+  # 可選 Secret: SSH_PORT（預設 22）
+  # 不設定 SSH_HOST 時自動跳過此 Job
+  # ─────────────────────────────────────────
+  deploy:
+    name: 部署到生產
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SSH_HOST != ''
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/stock
+            echo "🔄 拉取最新鏡像..."
+            docker compose pull api
+            echo "🚀 滾動更新 API 服務..."
+            docker compose up -d --no-deps --remove-orphans api
+            echo "🧹 清理舊鏡像..."
+            docker image prune -f
+            echo "✅ 部署完成"
