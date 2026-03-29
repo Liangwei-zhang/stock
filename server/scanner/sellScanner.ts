@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+import { config } from '../core/config.js';
 import { query, queryOne } from '../db/pool.js';
 
 export interface SellSignal {
@@ -113,8 +115,7 @@ export async function processSellSignal(signal: SellSignal): Promise<void> {
     if (!sigRow) continue;
 
     const linkToken = crypto.randomUUID();
-    const cryptoMod = await import('crypto');
-    const linkSig = cryptoMod.createHmac('sha256', process.env.TRADE_LINK_SECRET ?? 'secret')
+    const linkSig = crypto.createHmac('sha256', config.TRADE_LINK_SECRET)
       .update(`${linkToken}:${p.user_id}:${symbol}`)
       .digest('hex');
 
