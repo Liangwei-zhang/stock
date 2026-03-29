@@ -74,7 +74,7 @@ export async function processBuySignal(signal: BuySignal): Promise<void> {
 
     // 計算可用現金（總資金 - 持倉總值）
     const portfolioRows = await query<{ total_capital: string }>(
-      `SELECT SUM(total_capital)::text as total_capital
+      `SELECT COALESCE(SUM(total_capital), 0)::text as total_capital
        FROM user_portfolio WHERE user_id = $1`,
       [sub.user_id]
     );
