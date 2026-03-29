@@ -25,10 +25,10 @@ interface SendParams {
   text?: string;
 }
 
-/** 發送郵件（開發環境印到 console，生產環境用 SES/Resend） */
+/** 發送郵件（無郵件服務時印到 console，生產環境用 SES/Resend） */
 export async function sendEmail(params: SendParams): Promise<void> {
-  if (config.NODE_ENV === 'development' && !useResend && !useSES) {
-    console.log('📧 [Dev 郵件模擬]');
+  if (!useResend && !useSES) {
+    console.log('📧 [郵件模擬 — 未配置 SES/Resend，印至 console]');
     console.log(`  To: ${params.to}`);
     console.log(`  Subject: ${params.subject}`);
     console.log(`  ---`);
