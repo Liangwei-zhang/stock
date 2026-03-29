@@ -94,28 +94,14 @@ export default function LoginPage({ onSuccess }: Props) {
   };
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 20px',
-      background: '#f0f2f5',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 400,
-        background: '#fff',
-        borderRadius: 16,
-        padding: '32px 24px',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-      }}>
+    <div className="mobile-shell mobile-shell--auth">
+      <div className="mobile-auth-card">
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>📈</div>
-          <Title level={3} style={{ margin: 0 }}>Stock Signal</Title>
-          <Text type="secondary">智能股票訂閱通知系統</Text>
+        <div className="mobile-auth-hero">
+          <div className="mobile-eyebrow">Realtime Signal Hub</div>
+          <div className="mobile-auth-icon">📈</div>
+          <Title level={2} className="mobile-page-title" style={{ fontSize: 34, margin: 0 }}>Stock Signal</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>2026 風格的行動化交易訂閱中樞，登入後即可管理關注、持倉與通知節奏。</Text>
         </div>
 
         {/* 步驟指示 */}
@@ -162,26 +148,11 @@ export default function LoginPage({ onSuccess }: Props) {
 
         {step === 'code' && (
           <Form form={codeForm} onFinish={handleVerify} layout="vertical">
-            <div style={{
-              background: '#e6f7ff',
-              borderRadius: 8,
-              padding: '10px 14px',
-              marginBottom: 16,
-              fontSize: 13,
-              color: '#0958d9',
-            }}>
+            <div className="mobile-info-banner">
               已發送到 <strong>{email}</strong>
             </div>
             {devCode && (
-              <div style={{
-                background: '#fffbe6',
-                border: '1px solid #ffe58f',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 16,
-                fontSize: 13,
-                color: '#874d00',
-              }}>
+              <div className="mobile-highlight-banner">
                 ⚠️ 未配置郵件服務，驗證碼：<strong style={{ letterSpacing: 4 }}>{devCode}</strong>
               </div>
             )}

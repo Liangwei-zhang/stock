@@ -60,7 +60,7 @@ export default function TradeAdjustPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100dvh' }}>
+      <div className="mobile-shell mobile-shell--auth">
         <Spin size="large" />
       </div>
     );
@@ -68,39 +68,26 @@ export default function TradeAdjustPage() {
 
   if (done) {
     return (
-      <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100dvh' }}>
+      <div className="mobile-result-shell">
         <Result
           status="success"
           title="記錄成功！"
           subTitle="您的實際操作已記錄，持倉已自動更新 📊"
           extra={<Button type="primary" href="/">返回首頁</Button>}
+          className="mobile-result-card"
         />
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: '#f0f2f5',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 400,
-        background: '#fff',
-        borderRadius: 16,
-        padding: '28px 24px',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>✏️</div>
-          <Title level={4} style={{ margin: 0 }}>填寫實際操作</Title>
-          <Text type="secondary">請填入您在券商 APP 實際執行的數據</Text>
+    <div className="mobile-shell mobile-shell--auth">
+      <div className="mobile-auth-card">
+        <div className="mobile-auth-hero">
+          <div className="mobile-eyebrow">Trade Feedback Loop</div>
+          <div className="mobile-auth-icon">✏️</div>
+          <Title level={3} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>填寫實際操作</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>把您在券商 App 的最終成交結果回填，系統會以真實成交修正持倉與後續提醒。</Text>
         </div>
 
         {error && (

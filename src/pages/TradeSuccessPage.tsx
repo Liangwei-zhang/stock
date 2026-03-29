@@ -32,17 +32,7 @@ export const TradeSuccessPage: React.FC = () => {
         };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#0d0d0d',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
+    <div className="mobile-result-shell">
       <Result
         status={config.status}
         title={<span style={{ color: '#fff' }}>{config.title}</span>}
@@ -56,7 +46,7 @@ export const TradeSuccessPage: React.FC = () => {
             查看帳戶
           </Button>,
         ]}
-        style={{ background: '#141414', borderRadius: 12, padding: '32px 24px' }}
+        className="mobile-result-card"
       />
     </div>
   );

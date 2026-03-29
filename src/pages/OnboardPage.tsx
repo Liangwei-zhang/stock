@@ -31,39 +31,19 @@ export default function OnboardPage({ onComplete }: Props) {
   };
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 20px',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 440,
-        background: '#fff',
-        borderRadius: 20,
-        padding: '36px 28px',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>👋</div>
-          <Title level={3} style={{ margin: 0 }}>
+    <div className="mobile-shell mobile-shell--auth">
+      <div className="mobile-auth-card">
+        <div className="mobile-auth-hero">
+          <div className="mobile-eyebrow">Portfolio Onboarding</div>
+          <div className="mobile-auth-icon">👋</div>
+          <Title level={2} className="mobile-page-title" style={{ fontSize: 32, margin: 0 }}>
             {user?.name ? `歡迎，${user.name}！` : '歡迎！'}
           </Title>
-          <Text type="secondary">讓我們先設置您的投資帳戶</Text>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>先定義資金池與計價貨幣，後續的倉位建議、風險比與提醒節奏都會以此為基準。</Text>
         </div>
 
-        <div style={{
-          background: '#f9f0ff',
-          border: '1px solid #d3adf7',
-          borderRadius: 10,
-          padding: '14px 16px',
-          marginBottom: 24,
-        }}>
-          <Paragraph style={{ margin: 0, fontSize: 13, color: '#531dab' }}>
+        <div className="mobile-info-banner">
+          <Paragraph style={{ margin: 0, fontSize: 13, color: 'inherit' }}>
             💡 <strong>僅用於計算倉位</strong><br />
             系統根據您填入的總資金計算買入股數和金額建議，
             實際資金完全由您自己管理。
