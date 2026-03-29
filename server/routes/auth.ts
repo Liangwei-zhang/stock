@@ -48,9 +48,12 @@ router.post(
 
     const code = generateCode();
     await saveEmailCode(email, code, ip || null);
-    await sendVerificationCode(email, code);
+    const { devCode } = await sendVerificationCode(email, code);
 
-    res.json({ message: '驗證碼已發送，請查收郵件' });
+    res.json({
+      message: devCode ? '驗證碼已產生（未配置郵件服務）' : '驗證碼已發送，請查收郵件',
+      ...(devCode ? { devCode } : {}),
+    });
   })
 );
 

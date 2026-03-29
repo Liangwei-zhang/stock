@@ -28,6 +28,8 @@ export default function LoginPage({ onSuccess }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [devCode, setDevCode] = useState('');
+  const [codeForm] = Form.useForm();
 
   const startCountdown = () => {
     setCountdown(60);
@@ -47,15 +49,21 @@ export default function LoginPage({ onSuccess }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: values.email }),
       });
-      const data = await res.json() as { message?: string; error?: string };
+      const data = await res.json() as { message?: string; error?: string; devCode?: string };
       if (!res.ok) {
         message.error(data.error ?? '發送失敗，請稍後重試');
         return;
       }
       setEmail(values.email);
+      setDevCode(data.devCode ?? '');
       setStep('code');
       startCountdown();
-      message.success('驗證碼已發送到您的郵箱');
+      if (data.devCode) {
+        codeForm.setFieldsValue({ code: data.devCode });
+        message.info('未配置郵件服務，驗證碼已自動填入');
+      } else {
+        message.success('驗證碼已發送到您的郵箱');
+      }
     } catch {
       message.error('網絡錯誤，請稍後重試');
     } finally {
@@ -153,7 +161,7 @@ export default function LoginPage({ onSuccess }: Props) {
         )}
 
         {step === 'code' && (
-          <Form onFinish={handleVerify} layout="vertical">
+          <Form form={codeForm} onFinish={handleVerify} layout="vertical">
             <div style={{
               background: '#e6f7ff',
               borderRadius: 8,
@@ -164,6 +172,19 @@ export default function LoginPage({ onSuccess }: Props) {
             }}>
               已發送到 <strong>{email}</strong>
             </div>
+            {devCode && (
+              <div style={{
+                background: '#fffbe6',
+                border: '1px solid #ffe58f',
+                borderRadius: 8,
+                padding: '10px 14px',
+                marginBottom: 16,
+                fontSize: 13,
+                color: '#874d00',
+              }}>
+                ⚠️ 未配置郵件服務，驗證碼：<strong style={{ letterSpacing: 4 }}>{devCode}</strong>
+              </div>
+            )}
             <Form.Item
               name="code"
               label="6 位驗證碼"

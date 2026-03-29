@@ -66,8 +66,11 @@ export async function sendEmail(params: SendParams): Promise<void> {
   throw new Error('未配置郵件服務，請設置 SES_ACCESS_KEY 或 RESEND_API_KEY');
 }
 
-/** 發送驗證碼郵件 */
-export async function sendVerificationCode(email: string, code: string): Promise<void> {
+/** 發送驗證碼郵件；若無郵件服務配置則回傳 devCode 供前端顯示 */
+export async function sendVerificationCode(
+  email: string,
+  code: string,
+): Promise<{ devCode?: string }> {
   await sendEmail({
     to: email,
     subject: `您的 Stock Signal 登入驗證碼`,
@@ -85,4 +88,6 @@ export async function sendVerificationCode(email: string, code: string): Promise
     `,
     text: `您的 Stock Signal 登入驗證碼：${code}\n\n5 分鐘內有效，請勿洩露給他人。`,
   });
+  // 無郵件服務時直接回傳驗證碼，由前端顯示給使用者
+  return (!useResend && !useSES) ? { devCode: code } : {};
 }
