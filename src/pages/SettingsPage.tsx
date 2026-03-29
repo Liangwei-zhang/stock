@@ -11,12 +11,16 @@ import { BottomNav } from '../components/BottomNav';
 const { Title, Text } = Typography;
 
 interface AccountInfo {
-  name?: string;
-  email: string;
-  locale?: string;
-  timezone?: string;
-  totalCapital: number;
-  currency: string;
+  user: {
+    name?: string | null;
+    email: string;
+    locale?: string;
+    timezone?: string;
+  };
+  account: {
+    totalCapital: number;
+    currency: string;
+  };
 }
 
 const CURRENCIES = ['USD', 'TWD', 'HKD', 'CNY', 'JPY', 'EUR', 'GBP'];
@@ -42,11 +46,11 @@ export const SettingsPage: React.FC = () => {
     apiFetch<AccountInfo>('/api/account')
       .then(data => {
         form.setFieldsValue({
-          name: data.name ?? '',
-          total_capital: data.totalCapital,
-          currency: data.currency,
-          locale: data.locale ?? 'zh-TW',
-          timezone: data.timezone ?? 'Asia/Taipei',
+          name: data.user?.name ?? '',
+          total_capital: data.account?.totalCapital,
+          currency: data.account?.currency,
+          locale: data.user?.locale ?? 'zh-TW',
+          timezone: data.user?.timezone ?? 'Asia/Taipei',
         });
       })
       .catch(() => message.error('載入設置失敗'))
@@ -82,21 +86,25 @@ export const SettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ ...styles.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spin size="large" />
+      <div className="mobile-shell">
+        <div className="mobile-shell__inner" style={{ minHeight: '60dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Spin size="large" />
+        </div>
         <BottomNav />
       </div>
     );
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <Title level={5} style={{ color: '#fff', margin: 0 }}>⚙️ 設置</Title>
-        <Text style={{ color: '#8c8c8c', fontSize: 13 }}>{user?.email}</Text>
+    <div className="mobile-shell">
+      <div className="mobile-shell__inner">
+      <div className="mobile-page-header">
+        <div className="mobile-eyebrow">Preferences Studio</div>
+        <Title level={2} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>設置</Title>
+        <Text className="mobile-page-subtitle" style={{ display: 'block' }}>{user?.email}</Text>
       </div>
 
-      <div style={styles.section}>
+      <div className="mobile-panel">
         <Text style={styles.sectionTitle}>帳戶設置</Text>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label={<span style={{ color: '#8c8c8c' }}>顯示名稱</span>}>
@@ -165,7 +173,7 @@ export const SettingsPage: React.FC = () => {
         </Form>
       </div>
 
-      <div style={styles.section}>
+      <div className="mobile-panel mobile-panel--compact">
         <Text style={styles.sectionTitle}>帳號操作</Text>
         <Divider style={{ borderColor: '#1f1f1f', margin: '0 0 12px' }} />
         <Button
@@ -176,6 +184,8 @@ export const SettingsPage: React.FC = () => {
         >
           登出
         </Button>
+      </div>
+
       </div>
 
       <BottomNav />

@@ -26,6 +26,10 @@ interface AccountSummary {
   currency: string;
 }
 
+interface AccountResponse {
+  account: AccountSummary;
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
@@ -63,10 +67,10 @@ export const PortfolioPage: React.FC = () => {
     try {
       const [portfolio, acc] = await Promise.all([
         apiFetch<PortfolioItem[]>('/api/portfolio'),
-        apiFetch<AccountSummary>('/api/account'),
+        apiFetch<AccountResponse>('/api/account'),
       ]);
       setItems(portfolio);
-      setAccount(acc);
+      setAccount(acc.account);
     } catch {
       message.error('載入持倉失敗');
     } finally {
@@ -143,13 +147,18 @@ export const PortfolioPage: React.FC = () => {
   const totalCapital = account?.totalCapital ?? 0;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <Title level={5} style={{ color: '#fff', margin: 0 }}>📊 我的持倉</Title>
+    <div className="mobile-shell">
+      <div className="mobile-shell__inner">
+      <div className="mobile-page-header mobile-page-header--split">
+        <div>
+          <div className="mobile-eyebrow">Position Matrix</div>
+          <Title level={2} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>我的持倉</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>把各個部位的資金、均價、止盈止損整理成同一張風險畫布。</Text>
+        </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          size="small"
+          size="middle"
           onClick={openAdd}
         >
           添加
@@ -158,10 +167,10 @@ export const PortfolioPage: React.FC = () => {
 
       {/* 分配概覽 */}
       {totalCapital > 0 && (
-        <div style={{ padding: '12px 16px', background: '#141414', marginBottom: 2 }}>
+        <div className="mobile-panel mobile-panel--highlight">
           <div style={styles.row}>
-            <Text style={{ color: '#8c8c8c', fontSize: 12 }}>持倉佔比</Text>
-            <Text style={{ color: '#1677ff', fontSize: 12 }}>
+            <Text className="mobile-muted">持倉佔比</Text>
+            <Text style={{ color: '#9bc2ff', fontSize: 12 }}>
               {((totalPortfolio / totalCapital) * 100).toFixed(1)}%
             </Text>
           </div>
@@ -174,16 +183,16 @@ export const PortfolioPage: React.FC = () => {
         </div>
       )}
 
-      <div style={styles.section}>
+      <div className="mobile-panel">
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
         ) : items.length === 0 ? (
-          <Empty description="暫無持倉" style={{ padding: 40, color: '#595959' }} />
+          <div className="mobile-empty"><Empty description="暫無持倉" style={{ padding: 20, color: '#595959' }} /></div>
         ) : (
-          items.map(item => {
+          <div className="mobile-list">{items.map(item => {
             const itemPct = totalCapital > 0 ? (item.total_capital / totalCapital * 100).toFixed(1) : '0';
             return (
-              <div key={item.id} style={styles.item}>
+              <div key={item.id} className="mobile-list-card mobile-list-card--active">
                 <div style={styles.row}>
                   <Text strong style={{ color: '#fff', fontSize: 16 }}>{item.symbol}</Text>
                   <Text strong style={{ color: '#fff' }}>
@@ -228,8 +237,9 @@ export const PortfolioPage: React.FC = () => {
                 </div>
               </div>
             );
-          })
+          })}</div>
         )}
+      </div>
       </div>
 
       {/* 添加/編輯彈窗 */}
@@ -241,6 +251,7 @@ export const PortfolioPage: React.FC = () => {
         confirmLoading={saving}
         okText="保存"
         cancelText="取消"
+        rootClassName="mobile-modal"
         styles={{ content: { background: '#141414' }, header: { background: '#141414', color: '#fff' } }}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>

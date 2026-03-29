@@ -54,10 +54,11 @@ export const NotificationsPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await apiFetch<PagedResponse>(`/api/notifications?page=${pg}&limit=${LIMIT}`);
+      const nextItems = Array.isArray(res.items) ? res.items : [];
       if (pg === 1) {
-        setItems(res.items);
+        setItems(nextItems);
       } else {
-        setItems(prev => [...prev, ...res.items]);
+        setItems(prev => [...prev, ...nextItems]);
       }
       setTotal(res.total);
       setPage(pg);
@@ -101,76 +102,88 @@ export const NotificationsPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Title level={5} style={{ color: '#fff', margin: 0 }}>
-            <BellOutlined /> 通知記錄
-          </Title>
-          {unreadCount > 0 && <Badge count={unreadCount} />}
+    <div className="mobile-shell">
+      <div className="mobile-shell__inner">
+        <div className="mobile-page-header mobile-page-header--split">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div>
+            <div className="mobile-eyebrow">Signal Feed</div>
+            <Title level={2} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>
+              <BellOutlined /> 通知記錄
+            </Title>
+            <Text className="mobile-page-subtitle" style={{ display: 'block' }}>買賣提醒、止損觸發與系統事件都集中在這裡，按時間線快速清理。</Text>
+            </div>
+            {unreadCount > 0 && <Badge count={unreadCount} />}
+          </div>
+          {unreadCount > 0 && (
+            <Button
+              type="text"
+              size="small"
+              icon={<CheckOutlined />}
+              loading={markingAll}
+              onClick={markAllRead}
+              style={{ color: '#1677ff' }}
+            >
+              全部已讀
+            </Button>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <Button
-            type="text"
-            size="small"
-            icon={<CheckOutlined />}
-            loading={markingAll}
-            onClick={markAllRead}
-            style={{ color: '#1677ff' }}
-          >
-            全部已讀
-          </Button>
-        )}
-      </div>
 
-      {loading && items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
-      ) : items.length === 0 ? (
-        <Empty description="暫無通知" style={{ padding: 60, color: '#595959' }} />
-      ) : (
-        <>
-          <List
-            dataSource={items}
-            renderItem={item => (
-              <div
-                style={{
-                  ...styles.item,
-                  ...(item.is_read ? {} : styles.unread),
-                  background: item.is_read ? 'transparent' : '#0d1117',
-                }}
-                onClick={() => !item.is_read && markRead(item.id)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text strong style={{ color: '#fff', fontSize: 14 }}>
-                    {TYPE_ICON[item.type] ?? '🔔'} {item.title}
-                  </Text>
-                  {!item.is_read && (
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1677ff', marginTop: 4 }} />
-                  )}
-                </div>
-                {item.body && (
-                  <Text style={{ color: '#8c8c8c', fontSize: 13, display: 'block', marginBottom: 4 }}>
-                    {item.body}
-                  </Text>
+        {loading && items.length === 0 ? (
+          <div className="mobile-panel" style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+        ) : items.length === 0 ? (
+          <div className="mobile-panel mobile-empty"><Empty description="暫無通知" style={{ padding: 40, color: '#595959' }} /></div>
+        ) : (
+          <>
+            <div className="mobile-panel">
+              <List
+                dataSource={items}
+                renderItem={item => (
+                  <div
+                    style={{
+                      ...styles.item,
+                      ...(item.is_read ? {} : styles.unread),
+                      background: item.is_read ? 'rgba(10, 18, 32, 0.48)' : 'rgba(15, 28, 48, 0.88)',
+                      borderRadius: 16,
+                      marginBottom: 10,
+                      border: '1px solid rgba(148, 163, 184, 0.1)',
+                    }}
+                    onClick={() => !item.is_read && markRead(item.id)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                        {TYPE_ICON[item.type] ?? '🔔'} {item.title}
+                      </Text>
+                      {!item.is_read && (
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1677ff', marginTop: 4 }} />
+                      )}
+                    </div>
+                    {item.body && (
+                      <Text style={{ color: '#8c8c8c', fontSize: 13, display: 'block', marginBottom: 4 }}>
+                        {item.body}
+                      </Text>
+                    )}
+                    <Text style={styles.time}>{fmtTime(item.created_at)}</Text>
+                  </div>
                 )}
-                <Text style={styles.time}>{fmtTime(item.created_at)}</Text>
+              />
+            </div>
+
+            {items.length < total && (
+              <div style={{ textAlign: 'center', padding: 16 }}>
+                <Button
+                  type="link"
+                  loading={loading}
+                  onClick={() => load(page + 1)}
+                >
+                  載入更多
+                </Button>
               </div>
             )}
-          />
+          </>
+        )}
 
-          {items.length < total && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <Button
-                type="link"
-                loading={loading}
-                onClick={() => load(page + 1)}
-              >
-                載入更多
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+      </div>
 
       <BottomNav />
     </div>

@@ -25,6 +25,11 @@ interface SearchResult {
   exchange?: string;
 }
 
+interface SearchResponse {
+  items: SearchResult[];
+  query: string;
+}
+
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0d0d0d', color: '#fff', paddingBottom: 70 },
   header: { padding: '20px 16px 12px', background: '#141414', borderBottom: '1px solid #1f1f1f', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
@@ -66,9 +71,10 @@ export const WatchlistPage: React.FC = () => {
     if (q.length < 1) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const res = await apiFetch<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}&limit=15`);
-      setSearchResults(res);
+      const res = await apiFetch<SearchResponse>(`/api/search?q=${encodeURIComponent(q)}&limit=15`);
+      setSearchResults(Array.isArray(res.items) ? res.items : []);
     } catch {
+      setSearchResults([]);
       // silent
     } finally {
       setSearching(false);
@@ -114,27 +120,33 @@ export const WatchlistPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <Title level={5} style={{ color: '#fff', margin: 0 }}>⭐ 我的關注</Title>
+    <div className="mobile-shell">
+      <div className="mobile-shell__inner">
+      <div className="mobile-page-header mobile-page-header--split">
+        <div>
+          <div className="mobile-eyebrow">Signal Watchlist</div>
+          <Title level={2} className="mobile-page-title" style={{ fontSize: 30, margin: 0 }}>我的關注</Title>
+          <Text className="mobile-page-subtitle" style={{ display: 'block' }}>建立高優先級追蹤名單，控制每個標的的提醒靈敏度與推送開關。</Text>
+        </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          size="small"
+          size="middle"
           onClick={() => setSearchOpen(true)}
         >
           添加
         </Button>
       </div>
 
-      <div style={styles.section}>
+      <div className="mobile-panel">
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
         ) : items.length === 0 ? (
-          <Empty description="暫無關注" style={{ padding: 40, color: '#595959' }} />
+          <div className="mobile-empty"><Empty description="暫無關注" style={{ padding: 20, color: '#595959' }} /></div>
         ) : (
-          items.map(item => (
-            <div key={item.id} style={styles.item}>
+          <div className="mobile-list">
+          {items.map(item => (
+            <div key={item.id} className="mobile-list-card mobile-list-card--active">
               <div style={styles.row}>
                 <Text strong style={{ color: '#fff', fontSize: 16 }}>{item.symbol}</Text>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -167,8 +179,10 @@ export const WatchlistPage: React.FC = () => {
                 </Text>
               </div>
             </div>
-          ))
+          ))}
+          </div>
         )}
+      </div>
       </div>
 
       {/* 搜索添加彈窗 */}
@@ -176,6 +190,7 @@ export const WatchlistPage: React.FC = () => {
         open={searchOpen}
         title="搜索標的"
         footer={null}
+        rootClassName="mobile-modal"
         onCancel={() => { setSearchOpen(false); setSearchQ(''); setSearchResults([]); }}
         styles={{ content: { background: '#141414' }, header: { background: '#141414', color: '#fff' } }}
       >
