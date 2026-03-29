@@ -50,14 +50,14 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
 
   return (
     <>
-      <Tooltip title={`Strategy Plugin: ${snap.plugins.find(p => p.id === snap.active)?.name ?? 'Unknown'}`}>
+      <Tooltip title={`目前策略：${snap.plugins.find(p => p.id === snap.active)?.name ?? '未知策略'}`}>
         <Button
           size="small"
           icon={<ExperimentOutlined/>}
           onClick={handleOpen}
           style={{ fontSize: 11 }}
         >
-          {snap.plugins.find(p => p.id === snap.active)?.name ?? 'Strategy'}
+          {snap.plugins.find(p => p.id === snap.active)?.name ?? '策略'}
         </Button>
       </Tooltip>
 
@@ -65,17 +65,17 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
         open={open}
         onCancel={() => setOpen(false)}
         onOk={handleSaveConfig}
-        okText="Apply"
-        cancelText="Cancel"
+        okText="套用"
+        cancelText="取消"
         title={
           <Space>
             <ExperimentOutlined/>
-            <span>Strategy Plugin Manager</span>
+            <span>策略外掛管理</span>
           </Space>
         }
         width={520}
       >
-        <Title level={5} style={{ marginBottom: 12 }}>Available Plugins</Title>
+        <Title level={5} style={{ marginBottom: 12 }}>可用策略</Title>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {snap.plugins.map(p => (
             <div
@@ -112,7 +112,7 @@ export const PluginSelector: React.FC<Props> = ({ currentSymbol, onSwitch }) => 
             <Divider style={{ margin: '0 0 16px' }}/>
             <Title level={5} style={{ marginBottom: 12 }}>
               <SettingOutlined style={{ marginRight: 6 }}/>
-              Parameter Settings ({activePlugin?.name})
+              參數設定（{activePlugin?.name}）
             </Title>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
               {schema.map(s => (

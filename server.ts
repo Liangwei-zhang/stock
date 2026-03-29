@@ -418,6 +418,25 @@ app.get('/api/yahoo/:symbol', async (req, res) => {
   }
 });
 
+app.get(/^\/api\/binance\/(.+)$/, async (req, res) => {
+  const upstreamPath = String(req.params[0] ?? '');
+  const query        = new URLSearchParams(req.query as Record<string, string>).toString();
+  const url          = `https://api.binance.com/${upstreamPath}${query ? `?${query}` : ''}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `Binance returned ${response.status}` });
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // ─── Telegram 通知代理（支援多目標）────────────────────────────────────────
 // 支援兩種設定方式（向下相容）：
 //   方式一（多目標）：TELEGRAM_TARGETS='[{"botToken":"xxx","chatId":"yyy","name":"主帳號"},{...}]'

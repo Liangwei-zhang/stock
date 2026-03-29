@@ -1,0 +1,53 @@
+import pg from 'pg';
+import { config } from '../core/config.js';
+const { Pool } = pg;
+export const pool = new Pool({
+    connectionString: config.DATABASE_URL,
+    max: 50, // PM2 4 進程 × 50 = 200 併發 DB 連接
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+    allowExitOnIdle: false, // 空閒時不讓進程自動退出
+    maxUses: 7_500, // 對應 Python pool_recycle=1800，防長連接洩漏
+});
+pool.on('error', (err) => {
+    console.error('[DB] 未預期的連接錯誤：', err.message);
+});
+// shutdown 由 server/api.ts 統一編排（REL-01），此處不再各自 exit
+/** 執行查詢，返回結果行數組 */
+export async function query(text, params) {
+    const { rows } = await pool.query(text, params);
+    return rows;
+}
+/** 執行單行查詢，不存在時返回 null */
+export async function queryOne(text, params) {
+    const rows = await query(text, params);
+    return rows[0] ?? null;
+}
+/** 在事務中執行多個操作 */
+export async function transaction(fn) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await fn(client);
+        await client.query('COMMIT');
+        return result;
+    }
+    catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    }
+    finally {
+        client.release();
+    }
+}
+/** 健康檢查 */
+export async function checkDbHealth() {
+    try {
+        await pool.query('SELECT 1');
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+//# sourceMappingURL=pool.js.map

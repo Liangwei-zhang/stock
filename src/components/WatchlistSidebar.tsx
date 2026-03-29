@@ -115,17 +115,17 @@ const WatchlistItemRow: React.FC<{
         {buy?.signal && (
           <Tag color={buy.level === 'high' ? 'green' : 'lime'}
             style={{ margin: 0, fontSize: 9, padding: '0 4px', lineHeight: '16px' }}>
-            Buy {buy.score}
+            買 {buy.score}
           </Tag>
         )}
         {sell?.signal && (
           <Tag color={sell.level === 'high' ? 'red' : 'volcano'}
             style={{ margin: 0, fontSize: 9, padding: '0 4px', lineHeight: '16px' }}>
-            Sell {sell.score}
+            賣 {sell.score}
           </Tag>
         )}
         {active && <span className="wi-at-badge">⚡</span>}
-        <Tooltip title="Remove">
+        <Tooltip title="移除標的">
           <span
             className="watchlist-remove"
             onClick={e => onRemove(s.symbol, e)}
@@ -179,7 +179,7 @@ export const WatchlistSidebar: React.FC<Props> = ({
             <div className="watchlist-empty-icon">📋</div>
             <div className="watchlist-empty-title">建立第一批觀察名單</div>
             <div className="watchlist-empty-subtitle">新增股票後，左側會即時顯示漲跌、火花線與信號強度。</div>
-            <Button type="primary" size="small" onClick={onAddClick}>添加首支資產</Button>
+            <Button type="primary" size="small" onClick={onAddClick}>新增第一個資產</Button>
           </div>
         ) : stocks.map(row => (
           <WatchlistItemRow

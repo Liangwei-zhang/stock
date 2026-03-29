@@ -16,7 +16,7 @@ const fmtPrice = (p: number) =>
   p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p >= 0.01 ? p.toFixed(6) : p.toFixed(8);
 const fmtPnl = (n: number) => `${n >= 0 ? '+' : ''}$${Math.abs(n).toFixed(2)}`;
 const fmtTime = (ts: number) =>
-  new Date(ts).toLocaleString('en-US', {
+  new Date(ts).toLocaleString('zh-TW', {
     timeZone: 'America/Edmonton',
     month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
@@ -44,11 +44,11 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
   const executions  = autoTradeService.getExecutions();
 
   const tabs: { key: TabKey; label: string; badge?: number; green?: boolean }[] = [
-    { key: 'autotrade',   label: 'Auto Trade', badge: executions.filter(e => e.result === 'success').length, green: true },
-    { key: 'positions',   label: 'Positions',  badge: simPositions.length },
-    { key: 'history',     label: 'History' },
-    { key: 'performance', label: 'Performance' },
-    { key: 'bots',        label: 'Sim Users' },
+    { key: 'autotrade',   label: '自動交易', badge: executions.filter(e => e.result === 'success').length, green: true },
+    { key: 'positions',   label: '持倉', badge: simPositions.length },
+    { key: 'history',     label: '歷史' },
+    { key: 'performance', label: '績效' },
+    { key: 'bots',        label: '模擬交易員' },
   ];
 
   return (
@@ -57,12 +57,12 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
       {/* ── Account stats bar ─────────────────────────────────────────── */}
       <div className="account-stats-bar">
         {[
-          { l: 'Cash',          v: `$${simAccount.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,    c: 'white' },
-          { l: 'Equity',        v: `$${simAccount.totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, c: 'white' },
-          { l: 'Total PnL',     v: fmtPnl(simAccount.totalPnL),                                                          c: simAccount.totalPnL >= 0 ? 'pos' : 'neg' },
-          { l: 'Return',        v: `${simAccount.totalPnLPercent >= 0 ? '+' : ''}${simAccount.totalPnLPercent.toFixed(2)}%`, c: simAccount.totalPnLPercent >= 0 ? 'pos' : 'neg' },
-          { l: 'Open Positions',v: `${simPositions.length}`,                                                              c: 'white' },
-          { l: 'Auto Fills',    v: `${executions.filter(e => e.result === 'success').length} fills`,                     c: 'white' },
+          { l: '現金',     v: `$${simAccount.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, c: 'white' },
+          { l: '總資產',   v: `$${simAccount.totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, c: 'white' },
+          { l: '總盈虧',   v: fmtPnl(simAccount.totalPnL), c: simAccount.totalPnL >= 0 ? 'pos' : 'neg' },
+          { l: '報酬率',   v: `${simAccount.totalPnLPercent >= 0 ? '+' : ''}${simAccount.totalPnLPercent.toFixed(2)}%`, c: simAccount.totalPnLPercent >= 0 ? 'pos' : 'neg' },
+          { l: '持倉數',   v: `${simPositions.length}`, c: 'white' },
+          { l: '自動成交', v: `${executions.filter(e => e.result === 'success').length} 筆`, c: 'white' },
         ].map(m => (
           <div key={m.l} className="stat-item">
             <div className="stat-label">{m.l}</div>
@@ -74,8 +74,8 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
             await tradingSimulator.reset(100000);
             autoTradeService.clearExecutions();
             onRefresh();
-            message.success('Account reset');
-          }}>Reset Account</Button>
+            message.success('模擬帳戶已重設');
+          }}>重設帳戶</Button>
         </div>
       </div>
 
@@ -108,11 +108,11 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
           <div>
             <Row gutter={16} align="middle" style={{ marginBottom: 12 }}>
               <Col>
-                <Text strong style={{ fontSize: 13 }}>Global Controls</Text>
+                <Text strong style={{ fontSize: 13 }}>全域控制</Text>
                 <Text style={{ fontSize: 11, color: '#7b9586', marginLeft: 8 }}>
-                  Level:[{({ high: 'Advanced >=75', medium: 'Standard >=55', any: 'Any' } as Record<string, string>)[atCfg.minLevel]}]&nbsp;
-                  Size:{(atCfg.positionPct * 100).toFixed(0)}%&nbsp;
-                  Cooldown:{(atCfg.cooldownMs / 60000).toFixed(0)}m
+                  等級：[{({ high: '進階 >=75', medium: '標準 >=55', any: '不限' } as Record<string, string>)[atCfg.minLevel]}]&nbsp;
+                  倉位：{(atCfg.positionPct * 100).toFixed(0)}%&nbsp;
+                  冷卻：{(atCfg.cooldownMs / 60000).toFixed(0)} 分鐘
                 </Text>
               </Col>
               <Col>
@@ -127,10 +127,10 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
               <Col flex={1}/>
               <Col>
                 <Space size={6}>
-                  <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingOpen(true)}>Exit Rules</Button>
-                  <Button size="small" onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), true); onRefresh(); }}>Enable All</Button>
-                  <Button size="small" danger onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), false); onRefresh(); }}>Disable All</Button>
-                  {executions.length > 0 && <Button size="small" onClick={() => { autoTradeService.clearExecutions(); onRefresh(); }}>Clear Log</Button>}
+                  <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingOpen(true)}>出場規則</Button>
+                  <Button size="small" onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), true); onRefresh(); }}>全部開啟</Button>
+                  <Button size="small" danger onClick={() => { autoTradeService.setAllSymbols(watchlistItems.map(w => w.symbol), false); onRefresh(); }}>全部關閉</Button>
+                  {executions.length > 0 && <Button size="small" onClick={() => { autoTradeService.clearExecutions(); onRefresh(); }}>清空紀錄</Button>}
                 </Space>
               </Col>
             </Row>
@@ -158,7 +158,7 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                 {executions.slice(0, 15).map(e => (
                   <div key={e.id} className={`exec-row ${e.result}`}>
                     <span className="exec-time">{fmtTime(e.ts)}</span>
-                    <Tag color={e.action === 'buy' ? 'green' : 'red'} style={{ margin: 0, fontSize: 10 }}>{e.action === 'buy' ? 'Buy' : 'Sell'}</Tag>
+                    <Tag color={e.action === 'buy' ? 'green' : 'red'} style={{ margin: 0, fontSize: 10 }}>{e.action === 'buy' ? '買入' : '賣出'}</Tag>
                     <span className="exec-sym">{e.symbol}</span>
                     <span className="exec-price">${fmtPrice(e.price)}</span>
                     <Tag style={{ margin: 0, fontSize: 10 }}>{e.score}</Tag>
@@ -168,7 +168,7 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '20px 0', color: '#7b9586', fontSize: 12 }}>
-                Enable symbols to show execution activity here when signals fire.
+                啟用標的後，當信號觸發就會在這裡顯示執行紀錄。
               </div>
             )}
           </div>
@@ -179,7 +179,7 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
           <div>
             <Row gutter={10} align="middle" style={{ marginBottom: 12 }}>
               <Col span={5}>
-                <Select<string> size="small" style={{ width: '100%' }} placeholder="Select symbol" value={undefined}
+                <Select<string> size="small" style={{ width: '100%' }} placeholder="選擇標的" value={undefined}
                   options={watchlistItems.map(w => ({
                     label: `${w.symbol} $${fmtPrice(stocks.find(s => s.stock.symbol === w.symbol)?.stock.price ?? 0)}`,
                     value: w.symbol,
@@ -187,16 +187,16 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                   onChange={async (sym) => {
                     if (!sym) return;
                     const price = stocks.find(s => s.stock.symbol === sym)?.stock.price ?? 0;
-                    if (!price) return message.error('Price unavailable');
-                    const res = await tradingSimulator.executeTrade({ symbol: sym, type: 'buy', price, reason: 'Manual buy', confidence: 100 }, 0, 'manual');
-                    if (res.success) { message.success(res.message); onRefresh(); } else message.error(res.message);
+                    if (!price) return message.error('目前無法取得價格');
+                    const res = await tradingSimulator.executeTrade({ symbol: sym, type: 'buy', price, reason: '手動買入', confidence: 100 }, 0, 'manual');
+                    if (res.success) { message.success(`已手動買入 ${sym}`); onRefresh(); } else message.error('手動買入失敗');
                   }}
                 />
               </Col>
-              <Col><Text style={{ fontSize: 11, color: '#7b9586' }}>Quick buy (10% size)</Text></Col>
+              <Col><Text style={{ fontSize: 11, color: '#7b9586' }}>快速買入（10% 倉位）</Text></Col>
               <Col flex={1}/>
               {simPositions.length > 0 && (
-                <Col><Text style={{ fontSize: 11, color: '#7b9586' }}>{simPositions.length} open positions</Text></Col>
+                <Col><Text style={{ fontSize: 11, color: '#7b9586' }}>目前共有 {simPositions.length} 筆持倉</Text></Col>
               )}
             </Row>
             <Table
@@ -205,23 +205,23 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
               rowKey="symbol"
               size="small"
               pagination={false}
-              locale={{ emptyText: 'No positions' }}
+              locale={{ emptyText: '目前沒有持倉' }}
               columns={[
-                { title: 'Symbol',   dataIndex: 'symbol',   width: 80,  render: (s: string) => <Tag color="green" style={{ margin: 0 }}>{s}</Tag> },
-                { title: 'Shares',   dataIndex: 'quantity', width: 90,  render: (v: number) => v.toFixed(4) },
-                { title: 'Avg Cost', dataIndex: 'avgPrice', width: 90,  render: (v: number) => `$${fmtPrice(v)}` },
-                { title: 'Last', key: 'cur', render: (_: unknown, r: any) => {
+                { title: '標的', dataIndex: 'symbol', width: 80, render: (s: string) => <Tag color="green" style={{ margin: 0 }}>{s}</Tag> },
+                { title: '股數', dataIndex: 'quantity', width: 90, render: (v: number) => v.toFixed(4) },
+                { title: '均價', dataIndex: 'avgPrice', width: 90, render: (v: number) => `$${fmtPrice(v)}` },
+                { title: '現價', key: 'cur', render: (_: unknown, r: any) => {
                   const p   = stocks.find(s => s.stock.symbol === r.symbol)?.stock.price ?? r.avgPrice;
                   const chg = ((p - r.avgPrice) / r.avgPrice) * 100;
                   return <span>${fmtPrice(p)} <span style={{ fontSize: 10, color: chg >= 0 ? '#3fb950' : '#f85149' }}>({chg >= 0 ? '+' : ''}{chg.toFixed(2)}%)</span></span>;
                 }},
-                { title: 'SL / TP', key: 'sltp', render: (_: unknown, r: any) => (
+                { title: '停損 / 止盈', key: 'sltp', render: (_: unknown, r: any) => (
                   <Space size={3}>
-                    <Tag color="red"   style={{ margin: 0, fontSize: 10 }}>SL${fmtPrice(r.stopLoss ?? 0)}</Tag>
-                    <Tag color="green" style={{ margin: 0, fontSize: 10 }}>TP${fmtPrice(r.takeProfit ?? 0)}</Tag>
+                    <Tag color="red" style={{ margin: 0, fontSize: 10 }}>停損 ${fmtPrice(r.stopLoss ?? 0)}</Tag>
+                    <Tag color="green" style={{ margin: 0, fontSize: 10 }}>止盈 ${fmtPrice(r.takeProfit ?? 0)}</Tag>
                   </Space>
                 )},
-                { title: 'Unrealized PnL', key: 'pnl', render: (_: unknown, r: any) => {
+                { title: '浮動盈虧', key: 'pnl', render: (_: unknown, r: any) => {
                   const p    = stocks.find(s => s.stock.symbol === r.symbol)?.stock.price ?? r.avgPrice;
                   const pnl  = (p - r.avgPrice) * r.quantity;
                   const pct  = ((p - r.avgPrice) / r.avgPrice) * 100;
@@ -236,12 +236,12 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                     </div>
                   );
                 }},
-                { title: 'Action', key: 'act', width: 70, render: (_: unknown, r: any) => (
+                { title: '操作', key: 'act', width: 70, render: (_: unknown, r: any) => (
                   <Button size="small" danger onClick={async () => {
                     const price = stocks.find(s => s.stock.symbol === r.symbol)?.stock.price ?? r.avgPrice;
-                    const res   = await tradingSimulator.executeTrade({ symbol: r.symbol, type: 'sell', price, reason: 'Manual sell', confidence: 100 }, r.quantity, 'manual');
-                    if (res.success) { message.success(res.message); onRefresh(); } else message.error(res.message);
-                  }}>Close</Button>
+                    const res   = await tradingSimulator.executeTrade({ symbol: r.symbol, type: 'sell', price, reason: '手動賣出', confidence: 100 }, r.quantity, 'manual');
+                    if (res.success) { message.success(`已手動平倉 ${r.symbol}`); onRefresh(); } else message.error('手動平倉失敗');
+                  }}>平倉</Button>
                 )},
               ]}
             />
@@ -256,19 +256,19 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
             rowKey="id"
             size="small"
             pagination={false}
-            locale={{ emptyText: 'No trade history' }}
+            locale={{ emptyText: '目前沒有交易紀錄' }}
             columns={[
-              { title: 'Time',   dataIndex: 'date',       width: 90, render: (t: number) => fmtTime(t) },
-              { title: 'Symbol', dataIndex: 'symbol',     width: 70, render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag> },
-              { title: 'Side',   dataIndex: 'side',       width: 60, render: (s: string) => <Tag color={s === 'buy' ? 'green' : 'red'} style={{ margin: 0 }}>{s === 'buy' ? 'Buy' : 'Sell'}</Tag> },
-              { title: 'Shares', dataIndex: 'quantity',   width: 80, render: (v: number) => v.toFixed(4) },
-              { title: 'Price',  dataIndex: 'price',      width: 90, render: (v: number) => `$${fmtPrice(v)}` },
-              { title: 'Exit',   dataIndex: 'exitReason', width: 55, render: (r: string | undefined) => {
-                const m: Record<string, [string, string]> = { signal: ['Signal', 'green'], stop_loss: ['Stop Loss', 'red'], take_profit: ['Take Profit', 'green'], manual: ['Manual', 'default'] };
+              { title: '時間', dataIndex: 'date', width: 90, render: (t: number) => fmtTime(t) },
+              { title: '標的', dataIndex: 'symbol', width: 70, render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag> },
+              { title: '方向', dataIndex: 'side', width: 60, render: (s: string) => <Tag color={s === 'buy' ? 'green' : 'red'} style={{ margin: 0 }}>{s === 'buy' ? '買入' : '賣出'}</Tag> },
+              { title: '股數', dataIndex: 'quantity', width: 80, render: (v: number) => v.toFixed(4) },
+              { title: '價格', dataIndex: 'price', width: 90, render: (v: number) => `$${fmtPrice(v)}` },
+              { title: '出場', dataIndex: 'exitReason', width: 70, render: (r: string | undefined) => {
+                const m: Record<string, [string, string]> = { signal: ['信號', 'green'], stop_loss: ['停損', 'red'], take_profit: ['止盈', 'green'], manual: ['手動', 'default'] };
                 const [l, c] = m[r ?? 'signal'] ?? [r, 'default'];
                 return <Tag color={c} style={{ margin: 0, fontSize: 10 }}>{l}</Tag>;
               }},
-              { title: 'PnL',    dataIndex: 'pnl', width: 90, render: (p: number | undefined) =>
+              { title: '盈虧', dataIndex: 'pnl', width: 90, render: (p: number | undefined) =>
                 p == null
                   ? <Text type="secondary">—</Text>
                   : <Text style={{ color: p >= 0 ? '#3fb950' : '#f85149', fontSize: 12 }}>{fmtPnl(p)}</Text>
@@ -283,13 +283,13 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
             <div>
               <div className="perf-grid">
                 {[
-                  { l: 'Win Rate',    v: `${(simStats.winRate * 100).toFixed(1)}%`,            c: simStats.winRate >= 0.5 ? '#3fb950' : '#f85149' },
-                  { l: 'Profit Factor', v: simStats.profitFactor.toFixed(2),                   c: simStats.profitFactor >= 1.5 ? '#3fb950' : '#d29922' },
-                  { l: 'Expectancy',  v: fmtPnl(simStats.expectancy),                           c: simStats.expectancy >= 0 ? '#3fb950' : '#f85149' },
-                  { l: 'Max Drawdown', v: `${(simStats.maxDrawdown * 100).toFixed(1)}%`,       c: simStats.maxDrawdown > 0.2 ? '#f85149' : '#d29922' },
-                  { l: 'Sharpe', v: simStats.sharpeRatio.toFixed(2),                       c: simStats.sharpeRatio >= 1 ? '#3fb950' : '#7b9586' },
-                  { l: 'Stop Losses', v: `${simStats.byExitReason.stop_loss.count}`,          c: '#f85149' },
-                  { l: 'Take Profits', v: `${simStats.byExitReason.take_profit.count}`,       c: '#3fb950' },
+                  { l: '勝率', v: `${(simStats.winRate * 100).toFixed(1)}%`, c: simStats.winRate >= 0.5 ? '#3fb950' : '#f85149' },
+                  { l: '獲利因子', v: simStats.profitFactor.toFixed(2), c: simStats.profitFactor >= 1.5 ? '#3fb950' : '#d29922' },
+                  { l: '期望值', v: fmtPnl(simStats.expectancy), c: simStats.expectancy >= 0 ? '#3fb950' : '#f85149' },
+                  { l: '最大回撤', v: `${(simStats.maxDrawdown * 100).toFixed(1)}%`, c: simStats.maxDrawdown > 0.2 ? '#f85149' : '#d29922' },
+                  { l: '夏普值', v: simStats.sharpeRatio.toFixed(2), c: simStats.sharpeRatio >= 1 ? '#3fb950' : '#7b9586' },
+                  { l: '停損次數', v: `${simStats.byExitReason.stop_loss.count}`, c: '#f85149' },
+                  { l: '止盈次數', v: `${simStats.byExitReason.take_profit.count}`, c: '#3fb950' },
                 ].map(m => (
                   <div key={m.l} className="perf-cell">
                     <div className="perf-cell-label">{m.l}</div>
@@ -298,11 +298,11 @@ export const TradingSection: React.FC<Props> = ({ stocks, watchlistItems, refres
                 ))}
               </div>
               <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(103, 201, 138, 0.08)', border: '1px solid rgba(93, 187, 123, 0.14)', borderRadius: 12, fontSize: 12, color: '#5f7a6a' }}>
-                {simStats.totalTrades} trades · {simStats.winningTrades} wins · {simStats.losingTrades} losses · total PnL {fmtPnl(simStats.totalPnL)}
+                共 {simStats.totalTrades} 筆交易 · 勝 {simStats.winningTrades} 筆 · 負 {simStats.losingTrades} 筆 · 總盈虧 {fmtPnl(simStats.totalPnL)}
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '30px', color: '#7b9586', fontSize: 12 }}>Performance metrics appear here after completed trades.</div>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#7b9586', fontSize: 12 }}>完成交易後，這裡會顯示模擬績效統計。</div>
           )
         )}
 
@@ -329,7 +329,7 @@ const AutoTradeSettingModal: React.FC<{ open: boolean; onClose: () => void }> = 
 
   return (
     <Modal
-      title={<><SettingOutlined /> Auto Trade Settings</>}
+      title={<><SettingOutlined /> 自動交易設定</>}
       open={open}
       onCancel={onClose}
       onOk={() => {
@@ -342,10 +342,10 @@ const AutoTradeSettingModal: React.FC<{ open: boolean; onClose: () => void }> = 
           cooldownMs:    v.cooldownMin * 60 * 1000,
           exitMode:      v.exitMode,
         });
-        message.success('Settings saved');
+        message.success('設定已儲存');
         onClose();
       }}
-      okText="Save" cancelText="Cancel" width={480}
+      okText="儲存" cancelText="取消" width={480}
       destroyOnHidden
     >
       <Form
@@ -363,29 +363,29 @@ const AutoTradeSettingModal: React.FC<{ open: boolean; onClose: () => void }> = 
         }}
       >
         <Form.Item
-          label="Exit Profile"
+          label="出場配置"
           name="exitMode"
-          help="V1-V5 use direct entries. V6/V7 require triple confirmation before entry."
+          help="V1-V5 為直接進場模式；V6/V7 需三重確認後才會進場。"
         >
           <Select options={(Object.entries(EXIT_MODE_LABELS) as [string, string][]).map(([v, l]) => ({ value: v, label: l }))} />
         </Form.Item>
-        <Form.Item label="Minimum Signal Level" name="minLevel">
+        <Form.Item label="最低信號等級" name="minLevel">
           <Segmented options={[
-            { label: 'Advanced (>=75)', value: 'high' },
-            { label: 'Standard (>=55)', value: 'medium' },
-            { label: 'Any Signal',      value: 'any'    },
+            { label: '進階 (>=75)', value: 'high' },
+            { label: '標準 (>=55)', value: 'medium' },
+            { label: '任何信號', value: 'any' },
           ]} />
         </Form.Item>
-        <Form.Item label="Use Top/Bottom Prediction" name="usePrediction" valuePropName="checked">
+        <Form.Item label="使用頂底預測" name="usePrediction" valuePropName="checked">
           <Switch />
         </Form.Item>
-        <Form.Item label="Minimum Prediction %" name="minPredProb">
+        <Form.Item label="最低預測機率 %" name="minPredProb">
           <Slider min={50} max={95} marks={{ 65: '65%', 75: '75%', 85: '85%' }} />
         </Form.Item>
-        <Form.Item label="Position Size %" name="positionPct" help="Share of available cash per trade">
+        <Form.Item label="單筆倉位 %" name="positionPct" help="每筆交易可使用的可用現金比例">
           <Slider min={5} max={50} step={5} marks={{ 10: '10%', 20: '20%', 30: '30%' }} />
         </Form.Item>
-        <Form.Item label="Cooldown (min)" name="cooldownMin" help="Minimum gap between two buys for the same symbol">
+        <Form.Item label="冷卻時間（分鐘）" name="cooldownMin" help="同一標的兩次買入之間的最短間隔">
           <Slider min={1} max={60} marks={{ 5: '5m', 15: '15m', 30: '30m' }} />
         </Form.Item>
       </Form>

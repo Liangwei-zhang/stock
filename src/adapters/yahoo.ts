@@ -4,17 +4,16 @@
  * P4 修复：彻底移除对 corsproxy.io 的依赖。
  *
  * 策略：
- *   1. 优先通过本地 server.ts 代理（/api/yahoo/...），零 CORS 问题
- *   2. server 不可用时，直接请求 Yahoo（仅在同源或 CORS 放开的环境下有效）
- *   3. 两者都失败 → 抛出，由调用方降级到下一个适配器
+ *   1. 统一通过本地後端代理（/api/yahoo/...），零 CORS 问题
+ *   2. 代理不可用时直接抛出，由调用方降级到下一个适配器
  */
 
 import type { IDataSourceAdapter, QuoteData } from '../core/types';
 import type { StockData, AssetType } from '../types';
+import { readJsonIfAvailable } from '../utils/http';
 
 // 使用相對路徑，自動適配任何 port（前後端已整合為單一服務）
 const SERVER_PROXY = '/api/yahoo';
-const YAHOO_DIRECT = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
 async function fetchWithTimeout(url: string, ms = 10000): Promise<Response> {
   const ctrl = new AbortController();
@@ -23,18 +22,16 @@ async function fetchWithTimeout(url: string, ms = 10000): Promise<Response> {
 }
 
 async function queryViaProxy(symbol: string, params: string): Promise<any> {
-  // 先尝试本地 server 代理
-  try {
-    const url = `${SERVER_PROXY}/${encodeURIComponent(symbol)}?${params}`;
-    const res = await fetchWithTimeout(url, 8000);
-    if (res.ok) return res.json();
-  } catch { /* server not running */ }
+  const url = `${SERVER_PROXY}/${encodeURIComponent(symbol)}?${params}`;
+  const res = await fetchWithTimeout(url, 8000);
+  if (!res.ok) {
+    const err = await readJsonIfAvailable<{ error?: string }>(res);
+    throw new Error(err?.error ?? `Yahoo HTTP ${res.status}`);
+  }
 
-  // 降级：直接请求（仅在 CORS 允许的环境下可用）
-  const url = `${YAHOO_DIRECT}/${symbol}?${params}`;
-  const res = await fetchWithTimeout(url, 10000);
-  if (!res.ok) throw new Error(`Yahoo HTTP ${res.status}`);
-  return res.json();
+  const json = await readJsonIfAvailable<any>(res);
+  if (!json) throw new Error('Yahoo proxy returned non-JSON response');
+  return json;
 }
 
 export class YahooAdapter implements IDataSourceAdapter {

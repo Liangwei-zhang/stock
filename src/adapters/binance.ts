@@ -5,8 +5,9 @@
 
 import type { IDataSourceAdapter, QuoteData } from '../core/types';
 import type { StockData, AssetType } from '../types';
+import { readJsonIfAvailable } from '../utils/http';
 
-const BASE = '/binance-api';
+const BASE = '/api/binance';
 
 /** symbol → Binance pair（e.g. BTC → BTCUSDT） */
 function toPair(symbol: string): string {
@@ -40,7 +41,8 @@ export class BinanceAdapter implements IDataSourceAdapter {
     const res  = await fetchWithTimeout(url);
     if (!res.ok) throw new Error(`Binance HTTP ${res.status}`);
 
-    const rows: any[][] = await res.json();
+    const rows = await readJsonIfAvailable<any[][]>(res);
+    if (!rows) throw new Error('Binance proxy returned non-JSON response');
     const result: StockData[] = [];
 
     for (let i = 0; i < rows.length; i++) {
@@ -67,7 +69,8 @@ export class BinanceAdapter implements IDataSourceAdapter {
     const res  = await fetchWithTimeout(url, 5000);
     if (!res.ok) return null;
 
-    const d = await res.json();
+    const d = await readJsonIfAvailable<Record<string, unknown>>(res);
+    if (!d) return null;
     return {
       symbol,
       price:         Number(d.lastPrice),

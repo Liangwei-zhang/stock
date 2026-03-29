@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Input, Tag, Typography, Spin, Empty, Button } from 'antd';
 import { SearchOutlined, PlusOutlined, CheckOutlined, StarOutlined } from '@ant-design/icons';
 import { SearchResult } from '../types';
-import { searchSymbols, assetTypeLabel, assetTypeColor, POPULAR_ASSETS } from '../services/searchService';
+import { searchSymbols, assetTypeColor, POPULAR_ASSETS } from '../services/searchService';
+import { getDesktopAssetTypeLabel } from '../utils/desktopLabels';
 
 const { Text } = Typography;
 
@@ -45,10 +46,10 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
   const categories = query.trim()
     ? null
     : [
-        { label: '🏆 Popular Stocks', items: POPULAR_ASSETS.filter(a => a.assetType === 'equity') },
-        { label: '📦 Futures (Metals / Commodities)', items: POPULAR_ASSETS.filter(a => a.assetType === 'futures') },
-        { label: '📊 ETF',           items: POPULAR_ASSETS.filter(a => a.assetType === 'etf') },
-        { label: '📈 Indexes',       items: POPULAR_ASSETS.filter(a => a.assetType === 'index') },
+        { label: '🏆 熱門股票', items: POPULAR_ASSETS.filter(a => a.assetType === 'equity') },
+        { label: '📦 期貨（金屬 / 商品）', items: POPULAR_ASSETS.filter(a => a.assetType === 'futures') },
+        { label: '📊 ETF', items: POPULAR_ASSETS.filter(a => a.assetType === 'etf') },
+        { label: '📈 指數', items: POPULAR_ASSETS.filter(a => a.assetType === 'index') },
       ];
 
   const renderItem = (item: SearchResult) => {
@@ -72,7 +73,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
           {item.name}
         </Text>
         <Tag color={assetTypeColor(item.assetType)} style={{ margin: 0, fontSize: 11 }}>
-          {assetTypeLabel(item.assetType)}
+          {getDesktopAssetTypeLabel(item.assetType)}
         </Tag>
         {item.exchange && (
           <Text style={{ color: '#7b9586', fontSize: 11, minWidth: 32 }}>{item.exchange}</Text>
@@ -85,7 +86,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
           onClick={() => { if (!added) { onAdd(item); } }}
           style={{ minWidth: 64 }}
         >
-          {added ? 'Added' : 'Add'}
+          {added ? '已加入' : '加入'}
         </Button>
       </div>
     );
@@ -116,7 +117,7 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
           <Input
             ref={inputRef}
             prefix={<SearchOutlined style={{ color: '#5f7a6a' }} />}
-            placeholder="Search ticker or name (for example NVDA, gold, Gold, GC=F...)"
+            placeholder="搜尋代號或名稱，例如 NVDA、gold、GC=F"
             value={query}
             onChange={e => setQuery(e.target.value)}
             allowClear
@@ -124,14 +125,14 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
             style={{ background: '#f7fcf8', border: '1px solid rgba(103, 201, 138, 0.18)', color: '#183024' }}
           />
           <Text style={{ color: '#7b9586', fontSize: 12, marginTop: 6, display: 'block' }}>
-            Supports US equities, ETFs, gold/silver/oil futures, indexes, and more
+            支援美股、ETF、黃金／白銀／原油期貨、指數與其他常見資產
           </Text>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           {loading && (
             <div style={{ textAlign: 'center', padding: 32 }}>
-              <Spin size="small" /> <Text style={{ color: '#5f7a6a', marginLeft: 8 }}>Searching...</Text>
+              <Spin size="small" /> <Text style={{ color: '#5f7a6a', marginLeft: 8 }}>搜尋中...</Text>
             </div>
           )}
 
@@ -146,13 +147,13 @@ export const SearchModal: React.FC<Props> = ({ visible, watchlist, onClose, onAd
 
           {!loading && query.trim() && (
             results.length === 0
-              ? <Empty description={<span style={{ color: '#7b9586' }}>No matching assets found</span>} />
+              ? <Empty description={<span style={{ color: '#7b9586' }}>找不到符合條件的資產</span>} />
               : results.map(renderItem)
           )}
         </div>
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(103, 201, 138, 0.14)', textAlign: 'right' }}>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>關閉</Button>
         </div>
       </div>
     </div>

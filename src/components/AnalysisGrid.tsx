@@ -22,8 +22,8 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
       {/* ── Card 1: Technical Indicators ───────────────────────────────── */}
       <div className="analysis-card analysis-card--indicators">
         <div className="analysis-card-title-row">
-          <div className="analysis-card-title">Technical Indicators</div>
-          <span className="analysis-card-chip">Trend + Momentum</span>
+          <div className="analysis-card-title">技術指標</div>
+          <span className="analysis-card-chip">趨勢與動能</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
           {[
@@ -42,11 +42,11 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
           <div className="ind-separator" style={{ gridColumn: '1/-1' }}/>
           {[
             ['MACD',  ind.macdDif.toFixed(4),               ind.macdDif > 0 ? 'pos' : 'neg'],
-            ['Hist',  ind.macdHistogram.toFixed(4),          ind.macdHistogram > 0 ? 'pos' : 'neg'],
+            ['柱狀圖', ind.macdHistogram.toFixed(4),         ind.macdHistogram > 0 ? 'pos' : 'neg'],
             ['POC',   `$${ind.poc.toFixed(2)}`,             ''],
-            ['BB Width',  (ind.bollWidth * 100).toFixed(2) + '%', ind.bollSqueezing ? 'warn' : ''],
-            ['Bull Div', ind.rsiBullDiv ? '✓' : '—',           ind.rsiBullDiv ? 'pos' : ''],
-            ['Bear Div', ind.rsiBearDiv ? '✓' : '—',           ind.rsiBearDiv ? 'neg' : ''],
+            ['布林帶寬', (ind.bollWidth * 100).toFixed(2) + '%', ind.bollSqueezing ? 'warn' : ''],
+            ['多頭背離', ind.rsiBullDiv ? '✓' : '—',          ind.rsiBullDiv ? 'pos' : ''],
+            ['空頭背離', ind.rsiBearDiv ? '✓' : '—',          ind.rsiBearDiv ? 'neg' : ''],
           ].map(([l, v, c]) => (
             <div key={l} className="ind-row">
               <span className="ind-label">{l}</span>
@@ -59,15 +59,15 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
       {/* ── Card 2: Buy / Sell Signals ──────────────────────────────────── */}
       <div className="analysis-card analysis-card--signals">
         <div className="analysis-card-title-row">
-          <div className="analysis-card-title">Buy / Sell Signals</div>
+          <div className="analysis-card-title">買賣信號</div>
           <span className="analysis-card-chip">
-            {analysis.buySignal.signal || analysis.sellSignal.signal ? 'Live Readout' : 'Waiting for Signal'}
+            {analysis.buySignal.signal || analysis.sellSignal.signal ? '即時訊號' : '等待訊號'}
           </span>
         </div>
         <div className="signal-scorecard">
           {/* Buy */}
           <div className={`score-box ${analysis.buySignal.signal ? 'buy' : 'none'}`}>
-            <div className={`score-label ${analysis.buySignal.signal ? 'buy' : ''}`}>Buy</div>
+            <div className={`score-label ${analysis.buySignal.signal ? 'buy' : ''}`}>買入</div>
             <div className={`score-number ${analysis.buySignal.signal ? 'buy' : 'none'}`}>
               {analysis.buySignal.signal ? analysis.buySignal.score : '—'}
             </div>
@@ -75,7 +75,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
               <>
                 <Tag color={analysis.buySignal.level === 'high' ? 'green' : 'lime'}
                   style={{ margin: '4px 0 0', fontSize: 10 }}>
-                  {analysis.buySignal.level === 'high' ? 'High' : 'Medium'}
+                  {analysis.buySignal.level === 'high' ? '高' : '中'}
                 </Tag>
                 <div className="score-reasons">
                   {analysis.buySignal.reasons.slice(0, 3).map((r, i) =>
@@ -87,7 +87,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
           </div>
           {/* Sell */}
           <div className={`score-box ${analysis.sellSignal.signal ? 'sell' : 'none'}`}>
-            <div className={`score-label ${analysis.sellSignal.signal ? 'sell' : ''}`}>Sell</div>
+            <div className={`score-label ${analysis.sellSignal.signal ? 'sell' : ''}`}>賣出</div>
             <div className={`score-number ${analysis.sellSignal.signal ? 'sell' : 'none'}`}>
               {analysis.sellSignal.signal ? analysis.sellSignal.score : '—'}
             </div>
@@ -95,7 +95,7 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
               <>
                 <Tag color={analysis.sellSignal.level === 'high' ? 'red' : 'volcano'}
                   style={{ margin: '4px 0 0', fontSize: 10 }}>
-                  {analysis.sellSignal.level === 'high' ? 'High' : 'Medium'}
+                  {analysis.sellSignal.level === 'high' ? '高' : '中'}
                 </Tag>
                 <div className="score-reasons">
                   {analysis.sellSignal.reasons.slice(0, 3).map((r, i) =>
@@ -111,9 +111,9 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
         <div className="auto-trade-toggle-row">
           <div>
             <Text className={`auto-trade-status${symbolAutoTradeOn ? ' active' : ''}`}>
-              {symbolAutoTradeOn ? '⚡ Auto-trading active' : '⏸ Auto-trading off'}
+              {symbolAutoTradeOn ? '⚡ 自動交易已啟用' : '⏸ 自動交易已關閉'}
             </Text>
-            <div className="auto-trade-caption">Turn monitoring on or off for this symbol.</div>
+            <div className="auto-trade-caption">可針對目前標的開啟或關閉自動監控。</div>
           </div>
           <Switch
             size="small"
@@ -126,17 +126,17 @@ export const AnalysisGrid: React.FC<Props> = ({ analysis, selectedStock, onRefre
       {/* ── Card 3: Top / Bottom Prediction ─────────────────────────────── */}
       <div className="analysis-card analysis-card--prediction">
         <div className="analysis-card-title-row">
-          <div className="analysis-card-title">Top / Bottom Prediction</div>
+          <div className="analysis-card-title">頂底預測</div>
           <span className="analysis-card-chip">
-            {analysis.prediction.type === 'neutral' ? 'Neutral Range' : 'Probability Model'}
+            {analysis.prediction.type === 'neutral' ? '中性區間' : '機率模型'}
           </span>
         </div>
         <div className={`pred-type-badge ${analysis.prediction.type}`}>
           {analysis.prediction.type === 'top'
-            ? '⬆ Potential Top'
+            ? '⬆ 可能形成頂部'
             : analysis.prediction.type === 'bottom'
-              ? '⬇ Potential Bottom'
-              : '◎ No Clear Signal'}
+              ? '⬇ 可能形成底部'
+              : '◎ 暫無明確訊號'}
         </div>
         {analysis.prediction.type !== 'neutral' && (
           <div className="pred-prob">

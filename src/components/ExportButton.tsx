@@ -16,22 +16,22 @@ export const ExportButton: React.FC<Props> = ({ symbol, disabled }) => {
     setLoading(true);
     try {
       await generateAndExport(symbol, format);
-      message.success(`${symbol} report exported (${format.toUpperCase()})`);
+      message.success(`已匯出 ${symbol} 報告（${format.toUpperCase()}）`);
     } catch (err: any) {
-      message.error(`Export failed: ${err?.message ?? err}`);
+      message.error(`匯出失敗：${err?.message ?? err}`);
     } finally {
       setLoading(false);
     }
   };
 
   const items = [
-    { key: 'html', label: 'HTML report (print or save as PDF)' },
-    { key: 'csv',  label: 'CSV historical price data' },
-    { key: 'json', label: 'JSON full analysis payload' },
+    { key: 'html', label: 'HTML 報告（可列印或另存 PDF）' },
+    { key: 'csv',  label: 'CSV 歷史價格資料' },
+    { key: 'json', label: 'JSON 完整分析資料' },
   ];
 
   return (
-    <Tooltip title={`Export ${symbol} analysis report`} placement="bottomRight">
+    <Tooltip title={`匯出 ${symbol} 分析報告`} placement="bottomRight">
       <span>
         <Dropdown
           disabled={disabled || loading || !symbol}
@@ -46,7 +46,7 @@ export const ExportButton: React.FC<Props> = ({ symbol, disabled }) => {
             icon={loading ? <LoadingOutlined/> : <DownloadOutlined/>}
             style={{ fontSize: 11 }}
           >
-            Export Report
+            匯出報告
           </Button>
         </Dropdown>
       </span>

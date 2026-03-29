@@ -147,37 +147,37 @@ export interface SimUserState {
 const DEFAULT_USERS: SimulatedUser[] = [
   {
     id: 'bull_wang',
-    name: 'Ethan Bull',
+    name: '多頭阿城',
     emoji: '🐂',
-    description: 'Long-only trend follower with larger size and wider stops',
+    description: '專做多頭順勢交易，倉位較大，停損也放得更寬。',
     strategy: PRESET_STRATEGIES.bull,
   },
   {
     id: 'bear_li',
-    name: 'Mason Bear',
+    name: '空方阿烈',
     emoji: '🐻',
-    description: 'Short-only trader focused on sell signals and downside moves',
+    description: '專注賣出信號與下跌波段，只做空頭方向。',
     strategy: PRESET_STRATEGIES.bear,
   },
   {
     id: 'conservative_chen',
-    name: 'Olivia Guard',
+    name: '穩健小鴞',
     emoji: '🦉',
-    description: 'Strict filters, triple confirmation, smaller size, lower drawdown',
+    description: '嚴格篩選、三重確認、小倉位，優先控制回撤。',
     strategy: PRESET_STRATEGIES.conservative,
   },
   {
     id: 'scalper_zhang',
-    name: 'Ava Scalper',
+    name: '閃電小張',
     emoji: '⚡',
-    description: 'Low-threshold, faster entries and exits, max hold of 6 refresh cycles',
+    description: '低門檻、快進快出，最長只持有 6 個刷新週期。',
     strategy: PRESET_STRATEGIES.scalper,
   },
   {
     id: 'contrarian_zhou',
-    name: 'Noah Contra',
+    name: '逆勢阿周',
     emoji: '🦊',
-    description: 'Contrarian trader using top and bottom calls for higher risk and reward',
+    description: '偏好逆勢操作，利用頂底信號追求更高風險報酬。',
     strategy: PRESET_STRATEGIES.contrarian,
   },
 ];
@@ -307,26 +307,26 @@ function decide(
 
     // Timeout exit
     if (strategy.maxHoldPeriods > 0 && pos.holdCount >= strategy.maxHoldPeriods) {
-      closeTrade(state, symbol, price, 'timeout', `Timed out after ${pos.holdCount} cycles`);
+      closeTrade(state, symbol, price, 'timeout', `持有超時，已達 ${pos.holdCount} 個週期`);
       return;
     }
     // Stop loss
-    if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', 'Stop loss hit'); return; }
-    if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', 'Stop loss hit'); return; }
+    if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', '觸發停損'); return; }
+    if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss', '觸發停損'); return; }
     // Take profit
-    if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); return; }
-    if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); return; }
+    if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '觸發止盈'); return; }
+    if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '觸發止盈'); return; }
 
     // Close on reverse signal while holding a position.
     if (pos.side === 'long' && (sellSignal.signal && sellSignal.score >= strategy.minSellScore)) {
-      closeTrade(state, symbol, price, 'signal', `Reverse sell signal (${sellSignal.score})`);
+      closeTrade(state, symbol, price, 'signal', `出現反向賣出信號（${sellSignal.score} 分）`);
       return;
     }
     if (pos.side === 'short' && (buySignal.signal && buySignal.score >= strategy.minBuyScore)) {
-      closeTrade(state, symbol, price, 'signal', `Reverse buy signal (${buySignal.score})`);
+      closeTrade(state, symbol, price, 'signal', `出現反向買入信號（${buySignal.score} 分）`);
       return;
     }
-    addLog(state, { ts: Date.now(), symbol, action: 'hold', price, reason: `Holding (SL ${pos.stopLoss.toFixed(2)} / TP ${pos.takeProfit.toFixed(2)})` });
+    addLog(state, { ts: Date.now(), symbol, action: 'hold', price, reason: `持倉觀察中（停損 ${pos.stopLoss.toFixed(2)} / 止盈 ${pos.takeProfit.toFixed(2)}）` });
     persistThrottled(state);
     return;
   }
@@ -337,7 +337,7 @@ function decide(
     if (dd < strategy.pauseOnDrawdown * 0.7) {
       state.paused = false; // 回撤回复到阈值70%时解除
     } else {
-      addLog(state, { ts: Date.now(), symbol, action: 'paused', price, reason: `Risk pause (${(dd*100).toFixed(1)}% drawdown)` });
+      addLog(state, { ts: Date.now(), symbol, action: 'paused', price, reason: `風控暫停中（回撤 ${(dd*100).toFixed(1)}%）` });
       persistThrottled(state);
       return;
     }
@@ -345,7 +345,7 @@ function decide(
 
   // Max concurrent positions
   if (state.positions.size >= strategy.maxConcurrent) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: `Max positions reached (${strategy.maxConcurrent})` });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: `已達最大持倉數上限（${strategy.maxConcurrent}）` });
     persistThrottled(state);
     return;
   }
@@ -370,7 +370,7 @@ function decide(
     if (tripleOK && (!strategy.onlyWithTrend || bullTrend)) {
       wantLong  = !strategy.contrarian;
       wantShort = strategy.contrarian;
-      signalInfo = `Buy signal ${buySignal.score}`;
+      signalInfo = `買入信號 ${buySignal.score} 分`;
     }
   }
   // Bottom prediction
@@ -379,7 +379,7 @@ function decide(
     if (tripleOK && (!strategy.onlyWithTrend || bullTrend)) {
       wantLong  = !strategy.contrarian;
       wantShort = strategy.contrarian;
-      signalInfo = `Bottom prediction ${(prediction.probability*100).toFixed(0)}%`;
+      signalInfo = `底部預測 ${(prediction.probability*100).toFixed(0)}%`;
     }
   }
   // Sell signal
@@ -388,7 +388,7 @@ function decide(
     if (tripleOK && (!strategy.onlyWithTrend || bearTrend)) {
       wantShort = !strategy.contrarian;
       wantLong  = strategy.contrarian;
-      signalInfo = `Sell signal ${sellSignal.score}`;
+      signalInfo = `賣出信號 ${sellSignal.score} 分`;
     }
   }
   // Top prediction
@@ -397,12 +397,12 @@ function decide(
     if (tripleOK && (!strategy.onlyWithTrend || bearTrend)) {
       wantShort = !strategy.contrarian;
       wantLong  = strategy.contrarian;
-      signalInfo = `Top prediction ${(prediction.probability*100).toFixed(0)}%`;
+      signalInfo = `頂部預測 ${(prediction.probability*100).toFixed(0)}%`;
     }
   }
 
   if (!wantLong && !wantShort) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'No qualifying signal' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '目前沒有符合條件的信號' });
     persistThrottled(state);
     return;
   }
@@ -410,7 +410,7 @@ function decide(
   // Position sizing
   const capital  = state.balance * strategy.positionPct;
   if (capital < price * 0.001) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'Insufficient balance' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '可用餘額不足' });
     persistThrottled(state);
     return;
   }
@@ -419,7 +419,7 @@ function decide(
   const fee     = total * FEE_RATE;
 
   if (state.balance < total + fee) {
-    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: 'Insufficient balance' });
+    addLog(state, { ts: Date.now(), symbol, action: 'skip', price, reason: '可用餘額不足' });
     persistThrottled(state);
     return;
   }
@@ -501,7 +501,7 @@ function closeTrade(
 
   addLog(state, {
     ts: Date.now(), symbol, action, price: exitPrice,
-    reason: `${reason} | PnL ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`,
+    reason: `${reason}｜盈虧 ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`,
   });
 
   // Refresh statistics
@@ -521,7 +521,7 @@ function closeTrade(
     state.paused = true;
     addLog(state, {
       ts: Date.now(), symbol, action: 'paused', price: exitPrice,
-      reason: `Drawdown ${(dd*100).toFixed(1)}% >= ${(state.user.strategy.pauseOnDrawdown*100).toFixed(0)}% threshold, trading paused`,
+      reason: `回撤 ${(dd*100).toFixed(1)}% 已達 ${(state.user.strategy.pauseOnDrawdown*100).toFixed(0)}% 門檻，交易暫停`,
     });
   }
 
@@ -585,10 +585,10 @@ class SimulatedUserService {
       for (const [symbol, pos] of state.positions) {
         const price = prices.get(symbol);
         if (!price) continue;
-        if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  'Stop loss hit'); }
-        if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); }
-        if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  'Stop loss hit'); }
-        if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', 'Take profit hit'); }
+        if (pos.side === 'long'  && price <= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  '觸發停損'); }
+        if (pos.side === 'long'  && price >= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '觸發止盈'); }
+        if (pos.side === 'short' && price >= pos.stopLoss)  { closeTrade(state, symbol, price, 'stop_loss',  '觸發停損'); }
+        if (pos.side === 'short' && price <= pos.takeProfit) { closeTrade(state, symbol, price, 'take_profit', '觸發止盈'); }
       }
     }
     this.onUpdate?.();

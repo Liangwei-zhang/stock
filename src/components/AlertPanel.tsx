@@ -9,15 +9,15 @@ const { Text } = Typography;
 /** Relative timestamp display */
 function fmtRelative(ts: number): string {
   const diff = Date.now() - ts;
-  if (diff < 60_000)  return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
+  if (diff < 60_000)  return `${Math.floor(diff / 1000)} 秒前`;
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分鐘前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小時前`;
+  return `${Math.floor(diff / 86_400_000)} 天前`;
 }
 
 const TYPE_ICON:  Record<string, string> = { buy: '🟢', sell: '🔴', top: '🔺', bottom: '🔻' };
-const TYPE_LABEL: Record<string, string> = { buy: 'Buy', sell: 'Sell', top: 'Top', bottom: 'Bottom' };
-const LV_LABEL:   Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
+const TYPE_LABEL: Record<string, string> = { buy: '買入', sell: '賣出', top: '頂部', bottom: '底部' };
+const LV_LABEL:   Record<string, string> = { high: '高', medium: '中', low: '低' };
 const LV_COLOR:   Record<string, string> = { high: 'red', medium: 'orange', low: 'green' };
 
 type LevelFilter = 'all' | 'high' | 'medium' | 'low';
@@ -41,14 +41,14 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
 
         <div className="alert-header">
           <Text strong style={{ color: '#183024' }}>
-            Alerts
+            通知提醒
             {unreadCount > 0 && <Badge count={unreadCount} style={{ marginLeft: 6 }}/>}
           </Text>
           <Space>
             <Button type="text" size="small" icon={<CheckOutlined/>}
-              onClick={() => alertService.markAllAsRead()}>Mark All Read</Button>
+              onClick={() => alertService.markAllAsRead()}>全部標為已讀</Button>
             <Button type="text" size="small" icon={<DeleteOutlined/>}
-              onClick={() => alertService.clearAlerts()}>Clear</Button>
+              onClick={() => alertService.clearAlerts()}>清空</Button>
             <Button type="text" size="small" icon={<CloseOutlined/>} onClick={onClose}/>
           </Space>
         </div>
@@ -63,7 +63,7 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
               onClick={() => setLevelFilter(lv)}
               style={{ fontSize: 11, padding: '0 8px' }}
             >
-              {lv === 'all' ? 'All' : LV_LABEL[lv]}
+                {lv === 'all' ? '全部' : LV_LABEL[lv]}
             </Button>
           ))}
         </div>
@@ -72,7 +72,7 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
           {visible.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🔔</div>
-              <Text style={{ color: '#7b9586', fontSize: 12 }}>No alerts yet</Text>
+              <Text style={{ color: '#7b9586', fontSize: 12 }}>目前沒有提醒</Text>
             </div>
           ) : visible.map(alert => (
             <Card
@@ -94,15 +94,15 @@ export const AlertPanel: React.FC<Props> = ({ alerts, unreadCount, onClose }) =>
                 </span>
               </div>
               <div className="alert-type">
-                {TYPE_LABEL[alert.type]} signal
-                · ${alert.price.toFixed(alert.price >= 100 ? 2 : 4)} · {alert.score} pts
+                {TYPE_LABEL[alert.type]}信號
+                · ${alert.price.toFixed(alert.price >= 100 ? 2 : 4)} · {alert.score} 分
               </div>
               {(alert.takeProfit || alert.stopLoss) && (() => {
                 const isLong = alert.type === 'buy' || alert.type === 'bottom';
                 const upperVal = isLong ? alert.takeProfit : alert.stopLoss;
                 const lowerVal = isLong ? alert.stopLoss   : alert.takeProfit;
-                const upperLabel = isLong ? 'Target' : 'Risk';
-                const lowerLabel = isLong ? 'Stop' : 'Target';
+                const upperLabel = isLong ? '目標' : '風險';
+                const lowerLabel = isLong ? '停損' : '目標';
                 const fmt = (v: number) => `$${v.toFixed(v >= 100 ? 2 : 4)}`;
                 return (
                   <div style={{ display: 'flex', gap: 8, margin: '3px 0', fontSize: 11 }}>

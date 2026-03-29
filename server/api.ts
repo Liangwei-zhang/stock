@@ -35,11 +35,50 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+
 // ── 黑名單 ──
 app.use(blacklistMiddleware);
 
 // ── 請求日誌 + Metrics（Layer 6）──
 app.use(requestLogger);
+
+app.get('/api/yahoo/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  const params = new URLSearchParams(req.query as Record<string, string>).toString();
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?${params}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!response.ok) {
+      res.status(response.status).json({ error: `Yahoo returned ${response.status}` });
+      return;
+    }
+    res.json(await response.json());
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get(/^\/api\/binance\/(.+)$/, async (req, res) => {
+  const upstreamPath = String(req.params[0] ?? '');
+  const query = new URLSearchParams(req.query as Record<string, string>).toString();
+  const url = `https://api.binance.com/${upstreamPath}${query ? `?${query}` : ''}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!response.ok) {
+      res.status(response.status).json({ error: `Binance returned ${response.status}` });
+      return;
+    }
+    res.json(await response.json());
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
 
 // ── 路由 ──
 app.use('/health',             healthRouter);

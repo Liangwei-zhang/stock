@@ -6,9 +6,10 @@
  */
 
 import { StockData } from '../types';
+import { readJsonIfAvailable } from '../utils/http';
 
 // Binance API 基礎 URL
-const BINANCE_BASE = '/binance-api';
+const BINANCE_BASE = '/api/binance';
 
 // 幣種映射
 const CRYPTO_PAIRS: Record<string, string> = {
@@ -39,8 +40,9 @@ export async function fetchCryptoKlines(
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
-    const data = await res.json();
+
+    const data = await readJsonIfAvailable<any[][]>(res);
+    if (!data) throw new Error('Binance proxy returned non-JSON response');
     
     return data.map((k: any[]) => ({
       symbol,
@@ -79,8 +81,9 @@ export async function fetchCryptoTicker(symbol: string): Promise<{
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    
-    const data = await res.json();
+
+    const data = await readJsonIfAvailable<Record<string, unknown>>(res);
+    if (!data) return null;
     
     return {
       price: Number(data.lastPrice),
@@ -106,17 +109,18 @@ export async function fetchFundingRate(symbol: string): Promise<{
   const pair = CRYPTO_PAIRS[symbol] || `${symbol}USDT`;
   
   // 現貨沒有資金費率，需要用合約
-  const url = `${BINANCE_BASE}/api/v3/premiumIndex?symbol=${pair}`;
+  const url = `${BINANCE_BASE}/fapi/v1/premiumIndex?symbol=${pair}`;
   
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    
-    const data = await res.json();
+
+    const data = await readJsonIfAvailable<Record<string, unknown>>(res);
+    if (!data) return null;
     
     return {
       rate: Number(data.lastFundingRate) * 100, // 轉換為百分比
-      nextFundingTime: data.nextFundingTime,
+      nextFundingTime: Number(data.nextFundingTime),
     };
   } catch (e) {
     console.warn(`[cryptoService] Failed to fetch ${symbol} funding rate:`, e);
@@ -138,8 +142,9 @@ export async function fetchOrderBook(symbol: string, limit: number = 20): Promis
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    
-    const data = await res.json();
+
+    const data = await readJsonIfAvailable<{ bids: string[][]; asks: string[][] }>(res);
+    if (!data) return null;
     
     return {
       bids: data.bids.map((b: string[]) => [Number(b[0]), Number(b[1])]),

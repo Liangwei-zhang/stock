@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ConfigProvider, theme, Layout, Typography, Tag, Button, Spin, App as AntApp } from 'antd';
+import zhTW from 'antd/locale/zh_TW';
 import { PlusOutlined } from '@ant-design/icons';
 import { alertService }     from './services/alertService';
 import { indicatorService } from './services/indicatorService';
 import { stockService }     from './services/stockService';
-import { assetTypeLabel, assetTypeColor } from './services/searchService';
+import { assetTypeColor } from './services/searchService';
 import { useStockData }       from './hooks/useStockData';
 import { useChart }           from './hooks/useChart';
 import { AppHeader }          from './components/AppHeader';
@@ -15,6 +16,7 @@ import { TradingSection }     from './components/TradingSection';
 import { AlertPanel }         from './components/AlertPanel';
 import { SearchModal }        from './components/SearchModal';
 import { Alert, WatchlistItem } from './types';
+import { getDesktopAssetTypeLabel } from './utils/desktopLabels';
 import { fmtPrice } from './utils/format';
 import { SOURCE_CONFIG } from './utils/constants';
 import './App.css';
@@ -87,12 +89,12 @@ const App: React.FC = () => {
   // ── 加载态 ──────────────────────────────────────────────────────────────────
   if (!initialized) {
     return (
-      <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}>
+      <ConfigProvider locale={zhTW} theme={{ algorithm: theme.defaultAlgorithm }}>
         <AntApp>
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7fcf8' }}>
           <div style={{ textAlign: 'center' }}>
             <Spin size="large"/>
-            <div style={{ color: '#5f7a6a', marginTop: 16, fontSize: 14 }}>正在加载数据…</div>
+            <div style={{ color: '#5f7a6a', marginTop: 16, fontSize: 14 }}>正在載入桌面資料…</div>
           </div>
         </div>
         </AntApp>
@@ -101,7 +103,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm, token: {
+    <ConfigProvider locale={zhTW} theme={{ algorithm: theme.defaultAlgorithm, token: {
       colorPrimary: '#67c98a', colorInfo: '#67c98a', colorSuccess: '#7fd89e', colorBgBase: '#f7fcf8', colorBgContainer: '#ffffff', colorBgElevated: '#ffffff', colorBorder: 'rgba(93, 187, 123, 0.18)',
       colorText: '#183024', colorTextSecondary: '#5f7a6a', borderRadius: 8,
       fontFamily: 'Aptos, Avenir Next, SF Pro Display, Segoe UI Variable Display, Segoe UI, Helvetica Neue, Arial, sans-serif',
@@ -136,8 +138,8 @@ const App: React.FC = () => {
               {!selectedStock || !analysis ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📊</div>
-                  <Text style={{ color: '#5f7a6a' }}>从左侧选择或添加资产以查看分析</Text>
-                  <Button type="primary" icon={<PlusOutlined/>} onClick={() => setSearchVisible(true)}>添加资产</Button>
+                  <Text style={{ color: '#5f7a6a' }}>請先從左側選取標的，或新增資產後再查看分析。</Text>
+                  <Button type="primary" icon={<PlusOutlined/>} onClick={() => setSearchVisible(true)}>新增資產</Button>
                 </div>
               ) : (
                 <>
@@ -157,7 +159,7 @@ const App: React.FC = () => {
                           })()}
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {selectedItem && <Tag color={assetTypeColor(selectedItem.assetType)} style={{ margin: 0 }}>{assetTypeLabel(selectedItem.assetType)}</Tag>}
+                          {selectedItem && <Tag color={assetTypeColor(selectedItem.assetType)} style={{ margin: 0 }}>{getDesktopAssetTypeLabel(selectedItem.assetType)}</Tag>}
                           {selectedMeta && (
                             <Tag color={selectedMeta.source === 'real' ? 'success' : selectedMeta.source === 'database' ? 'warning' : 'default'} style={{ margin: 0 }}>
                               {SOURCE_CONFIG[selectedMeta.source].dot} {SOURCE_CONFIG[selectedMeta.source].label}

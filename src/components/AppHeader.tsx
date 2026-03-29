@@ -28,7 +28,7 @@ export const AppHeader: React.FC<Props> = ({
   const atActive = atCfg.enabled && Object.values(atCfg.symbolsEnabled).some(Boolean);
   const atCount  = Object.values(atCfg.symbolsEnabled).filter(Boolean).length;
   const isLive   = stocks.some(s => s.source === 'real');
-  const focusLabel = selectedStock ? `Focus ${selectedStock}` : 'No Symbol Selected';
+  const focusLabel = selectedStock ? `聚焦 ${selectedStock}` : '尚未選擇標的';
 
   return (
     <Header className="header">
@@ -42,24 +42,24 @@ export const AppHeader: React.FC<Props> = ({
           </svg>
         </div>
         <div className="header-brand">
-          <Title level={5} className="header-title">Stock Signal</Title>
-          <Text className="header-subtitle">Quant Monitoring and Trading Workspace</Text>
+          <Title level={5} className="header-title">股票訊號工作台</Title>
+          <Text className="header-subtitle">量化監控、分析與交易決策桌面</Text>
         </div>
       </div>
 
       <div className="header-center">
         <Text className="time-display">
-          {currentTime.toLocaleString('en-US', {
+          {currentTime.toLocaleString('zh-TW', {
             timeZone: 'America/Edmonton',
             month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit', second: '2-digit',
             hour12: false,
           })}
         </Text>
-        <Tooltip title={isLive ? 'Connected to live market data' : 'Using simulated market data'}>
+        <Tooltip title={isLive ? '目前已連線到即時市場資料' : '目前使用模擬市場資料'}>
           <span className={`header-status-pill ${isLive ? 'live' : 'delayed'}`}>
             {isLive ? <WifiOutlined/> : <DisconnectOutlined/>}
-            {isLive ? 'Live Feed' : 'Simulated'}
+            {isLive ? '即時行情' : '模擬資料'}
           </span>
         </Tooltip>
         <span className="header-focus-pill">{focusLabel}</span>
@@ -70,7 +70,7 @@ export const AppHeader: React.FC<Props> = ({
         <PluginSelector currentSymbol={selectedStock} onSwitch={onRefresh}/>
         <DataSourceConfig onUpdate={onRefresh}/>
         <ExportButton symbol={selectedStock} disabled={!selectedStock}/>
-        <Tooltip title={atActive ? `Auto-trading active on ${atCount} symbols` : 'Auto-trading is paused'}>
+        <Tooltip title={atActive ? `已對 ${atCount} 個標的啟用自動交易` : '自動交易目前已暫停'}>
           <Button
             size="small"
             onClick={() => { autoTradeService.setEnabled(!atCfg.enabled); onRefresh(); }}
@@ -86,12 +86,12 @@ export const AppHeader: React.FC<Props> = ({
             }}
             icon={<span style={{ fontSize: 12, color: atActive ? '#2f7d4b' : '#6b8576' }}>⚡</span>}
           >
-            {atActive ? `Auto ${atCount}` : 'Auto'}
+            {atActive ? `自動 ${atCount}` : '自動交易'}
           </Button>
         </Tooltip>
 
-        <Tooltip title="Search and add symbols">
-          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>Add</Button>
+        <Tooltip title="搜尋並加入資產">
+          <Button icon={<PlusOutlined/>} size="small" onClick={onAddClick}>新增資產</Button>
         </Tooltip>
 
         <Badge count={unreadCount} size="small" offset={[-2, 2]}>

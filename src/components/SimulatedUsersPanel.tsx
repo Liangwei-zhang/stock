@@ -36,14 +36,14 @@ const ACTION_COLOR: Record<string, string> = {
   paused:          '#faad14',
 };
 const ACTION_LABEL: Record<string, string> = {
-  buy:           'Buy',
-  sell:          'Short',
-  hold:          'Hold',
-  skip:          'Skip',
-  close_sl:      'Stop Loss',
-  close_tp:      'Take Profit',
-  close_timeout: 'Timeout',
-  paused:        'Paused',
+  buy:           '買入',
+  sell:          '放空',
+  hold:          '持有',
+  skip:          '略過',
+  close_sl:      '停損',
+  close_tp:      '止盈',
+  close_timeout: '逾時',
+  paused:        '暫停',
 };
 
 /** Mini profit curve canvas chart */
@@ -111,7 +111,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
   };
 
   const selectedState = activeUser ? states.find(s => s.user.id === activeUser) : null;
-  const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('en-US', {
+  const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('zh-TW', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -167,7 +167,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               </Col>
               <Col>
                 <Text strong style={{ fontSize: 13 }}>{user.name}</Text>
-                {state.paused && <Tag color="orange" style={{ marginLeft: 4, fontSize: 10 }}>Paused</Tag>}
+                {state.paused && <Tag color="orange" style={{ marginLeft: 4, fontSize: 10 }}>已暫停</Tag>}
               </Col>
             </Row>
             <Text type="secondary" style={{ fontSize: 11 }}>{user.description}</Text>
@@ -182,7 +182,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               </div>
             )}
             {state.allowedSymbols.length === 0 && (
-              <Text type="secondary" style={{ fontSize: 10 }}>All watchlist symbols</Text>
+              <Text type="secondary" style={{ fontSize: 10 }}>可交易全部自選標的</Text>
             )}
             {/* Mini profit sparkline */}
             {profitCurve.length >= 2 && (
@@ -194,12 +194,12 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               {isPos ? '+' : ''}{pnlPct.toFixed(2)}%
             </div>
             <Text type="secondary" style={{ fontSize: 11 }}>
-              ${totalValue.toFixed(0)} | {trades} trades
-              {winRate !== null && ` | Win ${((winRate) * 100).toFixed(0)}%`}
+              ${totalValue.toFixed(0)} | {trades} 筆交易
+              {winRate !== null && ` | 勝率 ${((winRate) * 100).toFixed(0)}%`}
             </Text>
           </Col>
           <Col>
-            <Tooltip title="Edit strategy">
+            <Tooltip title="調整策略">
               <Button
                 size="small"
                 type="text"
@@ -207,7 +207,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                 onClick={e => { e.stopPropagation(); setSettingUser(state); }}
               />
             </Tooltip>
-            <Tooltip title="Reset user">
+            <Tooltip title="重設交易員">
               <Button
                 size="small"
                 type="text"
@@ -222,10 +222,10 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
         {/* 迷你指标行 */}
         <Row gutter={8} style={{ marginTop: 8 }}>
           {[
-            { label: 'Positions', val: state.positions.size, color: state.positions.size > 0 ? '#77d7a2' : '#7b9586' },
-            { label: 'Profit Factor', val: state.tradeStats ? state.tradeStats.profitFactor.toFixed(1) : '-', color: undefined },
-            { label: 'Max Drawdown', val: state.tradeStats ? `${(state.tradeStats.maxDrawdown*100).toFixed(1)}%` : '-', color: undefined },
-            { label: 'Sharpe', val: state.tradeStats ? state.tradeStats.sharpeRatio.toFixed(2) : '-', color: undefined },
+            { label: '持倉數', val: state.positions.size, color: state.positions.size > 0 ? '#77d7a2' : '#7b9586' },
+            { label: '獲利因子', val: state.tradeStats ? state.tradeStats.profitFactor.toFixed(1) : '-', color: undefined },
+            { label: '最大回撤', val: state.tradeStats ? `${(state.tradeStats.maxDrawdown*100).toFixed(1)}%` : '-', color: undefined },
+            { label: '夏普值', val: state.tradeStats ? state.tradeStats.sharpeRatio.toFixed(2) : '-', color: undefined },
           ].map(m => (
             <Col key={m.label}>
               <Text type="secondary" style={{ fontSize: 10 }}>{m.label}</Text>
@@ -241,15 +241,15 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
 
   const logColumns = [
     {
-      title: 'Time', dataIndex: 'ts', key: 'ts', width: 90,
+      title: '時間', dataIndex: 'ts', key: 'ts', width: 90,
       render: (t: number) => formatTime(t),
     },
     {
-      title: 'Symbol', dataIndex: 'symbol', key: 'symbol', width: 70,
+      title: '標的', dataIndex: 'symbol', key: 'symbol', width: 70,
       render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag>,
     },
     {
-      title: 'Action', dataIndex: 'action', key: 'action', width: 90,
+      title: '動作', dataIndex: 'action', key: 'action', width: 90,
       render: (a: string) => (
         <Tag color={ACTION_COLOR[a]} style={{ margin: 0, fontSize: 11 }}>
           {ACTION_LABEL[a] ?? a}
@@ -257,44 +257,44 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
       ),
     },
     {
-      title: 'Price', dataIndex: 'price', key: 'price', width: 80,
+      title: '價格', dataIndex: 'price', key: 'price', width: 80,
       render: (p: number) => `$${p.toFixed(2)}`,
     },
-    { title: 'Reason', dataIndex: 'reason', key: 'reason', ellipsis: true },
+    { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
   ];
 
   const tradeColumns = [
     {
-      title: 'Time', dataIndex: 'exitAt', key: 'exitAt', width: 90,
+      title: '時間', dataIndex: 'exitAt', key: 'exitAt', width: 90,
       render: (t: number) => formatTime(t),
     },
     {
-      title: 'Symbol', dataIndex: 'symbol', key: 'symbol', width: 65,
+      title: '標的', dataIndex: 'symbol', key: 'symbol', width: 65,
       render: (s: string) => <Tag style={{ margin: 0 }}>{s}</Tag>,
     },
     {
-      title: 'Side', dataIndex: 'side', key: 'side', width: 65,
+      title: '方向', dataIndex: 'side', key: 'side', width: 65,
       render: (s: string) => (
         <Tag color={s === 'buy' ? 'green' : 'red'} style={{ margin: 0, fontSize: 11 }}>
-          {s === 'buy' ? 'Long' : 'Short'}
+          {s === 'buy' ? '做多' : '做空'}
         </Tag>
       ),
     },
     {
-      title: 'Exit', dataIndex: 'exitReason', key: 'exitReason', width: 90,
+      title: '出場', dataIndex: 'exitReason', key: 'exitReason', width: 90,
       render: (r: string) => {
         const map: Record<string, [string, string]> = {
-          signal:      ['Signal', 'green'],
-          stop_loss:   ['Stop Loss', 'red'],
-          take_profit: ['Take Profit', 'green'],
-          timeout:     ['Timeout', 'orange'],
+          signal:      ['信號', 'green'],
+          stop_loss:   ['停損', 'red'],
+          take_profit: ['止盈', 'green'],
+          timeout:     ['逾時', 'orange'],
         };
         const [label, color] = map[r] ?? [r, 'default'];
         return <Tag color={color} style={{ margin: 0, fontSize: 11 }}>{label}</Tag>;
       },
     },
     {
-      title: 'PnL', dataIndex: 'pnl', key: 'pnl', width: 90,
+      title: '盈虧', dataIndex: 'pnl', key: 'pnl', width: 90,
       render: (p: number, r: SimTrade) => (
         <Text style={{ color: p >= 0 ? '#52c41a' : '#ff4d4f', fontSize: 12 }}>
           {p >= 0 ? '+' : ''}${p.toFixed(2)}<br />
@@ -313,7 +313,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
 
     return (
       <Modal
-        title={`${settingUser.user.emoji} ${settingUser.user.name} Settings`}
+        title={`${settingUser.user.emoji} ${settingUser.user.name} 策略設定`}
         open={!!settingUser}
         onCancel={() => setSettingUser(null)}
         onOk={() => {
@@ -336,8 +336,8 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
           const newBal = vals.initBalance;
           if (newBal && newBal !== settingUser.initBalance) {
             Modal.confirm({
-              title: 'Reset account?',
-              content: `Change ${settingUser.user.name} to $${newBal.toLocaleString()} initial capital and reset the account? Positions and trade history will be cleared.`,
+              title: '要重設帳戶嗎？',
+              content: `要把 ${settingUser.user.name} 的初始資金改為 $${newBal.toLocaleString()}，並同步重設帳戶嗎？這會清除目前持倉與交易紀錄。`,
               onOk: () => {
                 simulatedUserService.setUserInitBalance(settingUser.user.id, newBal);
                 refresh();
@@ -362,8 +362,8 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
           initBalance:      settingUser.initBalance,
           allowedSymbols:   settingUser.allowedSymbols,
         }}>
-          <Divider orientation="left" plain style={{ fontSize: 12 }}>Account</Divider>
-          <Form.Item label="Initial Capital" name="initBalance" help="Changing this will prompt for an account reset">
+          <Divider orientation="left" plain style={{ fontSize: 12 }}>帳戶</Divider>
+          <Form.Item label="初始資金" name="initBalance" help="修改後會提示是否同步重設帳戶">
             <InputNumber<number>
               style={{ width: '100%' }}
               min={1000}
@@ -372,43 +372,43 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               parser={v => Number(v?.replace(/\$\s?|(,*)/g, '') || 0)}
             />
           </Form.Item>
-          <Form.Item label="Tradable Symbols" name="allowedSymbols" help="Leave empty to trade all watchlist symbols">
+          <Form.Item label="可交易標的" name="allowedSymbols" help="留空代表可交易全部自選標的">
             <Select
               mode="multiple"
-              placeholder="Leave empty to trade all watchlist symbols"
+              placeholder="留空即可套用全部自選標的"
               style={{ width: '100%' }}
               allowClear
               options={symbols.map(sym => ({ label: sym, value: sym }))}
             />
           </Form.Item>
-          <Divider orientation="left" plain style={{ fontSize: 12 }}>Entry Thresholds</Divider>
-          <Form.Item label="Min Buy Score" name="minBuyScore">
+          <Divider orientation="left" plain style={{ fontSize: 12 }}>進場門檻</Divider>
+          <Form.Item label="最低買入分數" name="minBuyScore">
             <Slider min={30} max={100} marks={{ 55: '55', 75: '75' }} />
           </Form.Item>
-          <Form.Item label="Min Sell Score" name="minSellScore">
+          <Form.Item label="最低賣出分數" name="minSellScore">
             <Slider min={30} max={100} marks={{ 55: '55', 75: '75' }} />
           </Form.Item>
-          <Form.Item label="Min Prediction %" name="minPredProb">
+          <Form.Item label="最低預測機率 %" name="minPredProb">
             <Slider min={50} max={95} marks={{ 65: '65%', 80: '80%' }} />
           </Form.Item>
-          <Divider orientation="left" plain style={{ fontSize: 12 }}>Positioning & Risk</Divider>
-          <Form.Item label="Position Size %" name="positionPct">
+          <Divider orientation="left" plain style={{ fontSize: 12 }}>倉位與風控</Divider>
+          <Form.Item label="單筆倉位 %" name="positionPct">
             <Slider min={5} max={40} marks={{ 10: '10%', 20: '20%' }} />
           </Form.Item>
-          <Form.Item label="Stop ATR Multiplier" name="stopMultiplier">
+          <Form.Item label="停損 ATR 倍數" name="stopMultiplier">
             <Slider min={0.5} max={5} step={0.5} marks={{ 1: '1x', 2: '2x', 3: '3x' }} />
           </Form.Item>
-          <Form.Item label="Target ATR Multiplier" name="profitMultiplier">
+          <Form.Item label="止盈 ATR 倍數" name="profitMultiplier">
             <Slider min={1} max={8} step={0.5} marks={{ 2: '2x', 4: '4x' }} />
           </Form.Item>
-          <Divider orientation="left" plain style={{ fontSize: 12 }}>Filters</Divider>
-          <Form.Item label="Triple Confirmation" name="requireTriple" valuePropName="checked">
+          <Divider orientation="left" plain style={{ fontSize: 12 }}>過濾條件</Divider>
+          <Form.Item label="三重確認" name="requireTriple" valuePropName="checked">
             <Switch size="small" />
           </Form.Item>
-          <Form.Item label="Trend Only" name="onlyWithTrend" valuePropName="checked">
+          <Form.Item label="只順勢交易" name="onlyWithTrend" valuePropName="checked">
             <Switch size="small" />
           </Form.Item>
-          <Form.Item label="Pause On Drawdown %" name="pauseOnDrawdown">
+          <Form.Item label="回撤暫停門檻 %" name="pauseOnDrawdown">
             <Slider min={5} max={50} marks={{ 10: '10%', 25: '25%' }} />
           </Form.Item>
         </Form>
@@ -424,12 +424,12 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
       <Row align="middle" gutter={16} style={{ marginBottom: 16 }}>
         <Col>
           <ThunderboltOutlined style={{ fontSize: 20, marginRight: 8 }} />
-          <Title level={4} style={{ margin: 0, display: 'inline' }}>Simulated Traders Arena</Title>
+          <Title level={4} style={{ margin: 0, display: 'inline' }}>模擬交易員競技場</Title>
         </Col>
         <Col flex={1} />
         <Col>
           <Space>
-            <Text>Seed Capital</Text>
+            <Text>初始資金</Text>
             <InputNumber
               value={resetBal}
               onChange={v => setResetBal(v ?? 50000)}
@@ -439,9 +439,9 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               size="small"
             />
             <Button size="small" danger icon={<ReloadOutlined />} onClick={handleResetAll}>
-              Reset All
+              全部重設
             </Button>
-            <Text>Simulation</Text>
+            <Text>模擬開關</Text>
             <Switch checked={enabled} onChange={handleEnable} />
           </Space>
         </Col>
@@ -450,7 +450,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
       {!enabled && (
         <div style={{ textAlign: 'center', padding: '24px 0', color: '#7b9586' }}>
           <PauseOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
-          Turn on simulation and the traders will react to each market update automatically.
+          開啟模擬後，這些交易員會根據每次市場更新自動做出反應。
         </div>
       )}
 
@@ -472,17 +472,17 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               <Row gutter={16} style={{ marginBottom: 12 }}>
                 <Col>
                   <Text style={{ fontSize: 16 }}>{selectedState.user.emoji}</Text>
-                  <Text strong style={{ marginLeft: 6 }}>{selectedState.user.name} - Details</Text>
+                  <Text strong style={{ marginLeft: 6 }}>{selectedState.user.name}｜詳細資料</Text>
                 </Col>
                 <Col flex={1} />
                 <Col>
                   <Space size={4}>
                     {Array.from(selectedState.positions.entries()).map(([sym, pos]) => (
                       <Tag key={sym} color={pos.side === 'long' ? 'green' : 'red'}>
-                        {sym} {pos.side === 'long' ? 'Long' : 'Short'} {pos.qty.toFixed(3)} @ ${pos.entryPrice.toFixed(2)}
+                        {sym} {pos.side === 'long' ? '做多' : '做空'} {pos.qty.toFixed(3)} @ ${pos.entryPrice.toFixed(2)}
                       </Tag>
                     ))}
-                    {selectedState.positions.size === 0 && <Text type="secondary">No open positions</Text>}
+                    {selectedState.positions.size === 0 && <Text type="secondary">目前沒有持倉</Text>}
                   </Space>
                 </Col>
               </Row>
@@ -491,13 +491,13 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
               {selectedState.tradeStats && (
                 <Row gutter={12} style={{ marginBottom: 16 }}>
                   {[
-                    { label: 'Win Rate', val: `${(selectedState.tradeStats.winRate*100).toFixed(1)}%`, color: selectedState.tradeStats.winRate >= 0.5 ? '#52c41a' : '#ff4d4f' },
-                    { label: 'Profit Factor', val: selectedState.tradeStats.profitFactor.toFixed(2), color: undefined },
-                    { label: 'Expectancy', val: `$${selectedState.tradeStats.expectancy.toFixed(2)}`, color: selectedState.tradeStats.expectancy >= 0 ? '#52c41a' : '#ff4d4f' },
-                    { label: 'Max Drawdown', val: `${(selectedState.tradeStats.maxDrawdown*100).toFixed(1)}%`, color: undefined },
-                    { label: 'Sharpe', val: selectedState.tradeStats.sharpeRatio.toFixed(2), color: undefined },
-                    { label: 'Stop Losses', val: `${selectedState.tradeStats.byExitReason.stop_loss.count}`, color: '#ff7875' },
-                    { label: 'Take Profits', val: `${selectedState.tradeStats.byExitReason.take_profit.count}`, color: '#73d13d' },
+                    { label: '勝率', val: `${(selectedState.tradeStats.winRate*100).toFixed(1)}%`, color: selectedState.tradeStats.winRate >= 0.5 ? '#52c41a' : '#ff4d4f' },
+                    { label: '獲利因子', val: selectedState.tradeStats.profitFactor.toFixed(2), color: undefined },
+                    { label: '期望值', val: `$${selectedState.tradeStats.expectancy.toFixed(2)}`, color: selectedState.tradeStats.expectancy >= 0 ? '#52c41a' : '#ff4d4f' },
+                    { label: '最大回撤', val: `${(selectedState.tradeStats.maxDrawdown*100).toFixed(1)}%`, color: undefined },
+                    { label: '夏普值', val: selectedState.tradeStats.sharpeRatio.toFixed(2), color: undefined },
+                    { label: '停損次數', val: `${selectedState.tradeStats.byExitReason.stop_loss.count}`, color: '#ff7875' },
+                    { label: '止盈次數', val: `${selectedState.tradeStats.byExitReason.take_profit.count}`, color: '#73d13d' },
                   ].map(m => (
                     <Col key={m.label}>
                       <div style={{ fontSize: 10, color: '#7b9586' }}>{m.label}</div>
@@ -512,7 +512,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                 items={[
                   {
                     key: 'log',
-                    label: `Decision Log (${selectedState.log.length})`,
+                    label: `決策日誌 (${selectedState.log.length})`,
                     children: (
                       <Table
                         dataSource={selectedState.log}
@@ -527,7 +527,7 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                   },
                   {
                     key: 'trades',
-                    label: `Closed Trades (${selectedState.trades.length})`,
+                    label: `已平倉交易 (${selectedState.trades.length})`,
                     children: (
                       <Table
                         dataSource={selectedState.trades}
@@ -542,22 +542,22 @@ export const SimulatedUsersPanel: React.FC<Props> = ({ prices, symbols, embedded
                   },
                   {
                     key: 'rules',
-                    label: 'Strategy Rules',
+                    label: '策略規則',
                     children: (
                       <Row gutter={[16, 8]} style={{ padding: '8px 0' }}>
                         {[
-                          ['Min Buy Score', selectedState.user.strategy.minBuyScore === 999 ? 'Disabled' : selectedState.user.strategy.minBuyScore],
-                          ['Min Sell Score', selectedState.user.strategy.minSellScore === 999 ? 'Disabled' : selectedState.user.strategy.minSellScore],
-                          ['Min Prediction', `${(selectedState.user.strategy.minPredProb * 100).toFixed(0)}%`],
-                          ['Position Size', `${(selectedState.user.strategy.positionPct * 100).toFixed(0)}%`],
-                          ['Max Concurrent', selectedState.user.strategy.maxConcurrent],
-                          ['Stop Multiplier', `${selectedState.user.strategy.stopMultiplier}x ATR`],
-                          ['Target Multiplier', `${selectedState.user.strategy.profitMultiplier}x ATR`],
-                          ['Max Hold', selectedState.user.strategy.maxHoldPeriods === 0 ? 'Unlimited' : `${selectedState.user.strategy.maxHoldPeriods} cycles`],
-                          ['Triple Confirmation', selectedState.user.strategy.requireTriple ? 'Required' : 'Optional'],
-                          ['Trend Only', selectedState.user.strategy.onlyWithTrend ? 'Yes' : 'No'],
-                          ['Contrarian', selectedState.user.strategy.contrarian ? 'Yes' : 'No'],
-                          ['Pause Threshold', `${(selectedState.user.strategy.pauseOnDrawdown * 100).toFixed(0)}%`],
+                          ['最低買入分數', selectedState.user.strategy.minBuyScore === 999 ? '停用' : selectedState.user.strategy.minBuyScore],
+                          ['最低賣出分數', selectedState.user.strategy.minSellScore === 999 ? '停用' : selectedState.user.strategy.minSellScore],
+                          ['最低預測機率', `${(selectedState.user.strategy.minPredProb * 100).toFixed(0)}%`],
+                          ['單筆倉位', `${(selectedState.user.strategy.positionPct * 100).toFixed(0)}%`],
+                          ['最大同時持倉', selectedState.user.strategy.maxConcurrent],
+                          ['停損倍數', `${selectedState.user.strategy.stopMultiplier}x ATR`],
+                          ['止盈倍數', `${selectedState.user.strategy.profitMultiplier}x ATR`],
+                          ['最長持有', selectedState.user.strategy.maxHoldPeriods === 0 ? '不限' : `${selectedState.user.strategy.maxHoldPeriods} 個週期`],
+                          ['三重確認', selectedState.user.strategy.requireTriple ? '必要' : '可選'],
+                          ['只順勢交易', selectedState.user.strategy.onlyWithTrend ? '是' : '否'],
+                          ['逆勢交易', selectedState.user.strategy.contrarian ? '是' : '否'],
+                          ['暫停門檻', `${(selectedState.user.strategy.pauseOnDrawdown * 100).toFixed(0)}%`],
                         ].map(([label, val]) => (
                           <Col key={label as string} span={8}>
                             <Text type="secondary" style={{ fontSize: 11 }}>{label}</Text>

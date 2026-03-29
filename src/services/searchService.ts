@@ -65,6 +65,7 @@ function mapType(quoteType: string): AssetType {
     case 'FUTURE':
     case 'FUTURES':   return 'futures';
     case 'INDEX':     return 'index';
+    case 'CRYPTO':
     case 'CRYPTOCURR':
     case 'CRYPTOCURRENCY': return 'crypto';
     default:          return 'other';
@@ -104,10 +105,20 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
   try {
     const res = await fetchTO(`${BACKEND_SEARCH}?q=${encodeURIComponent(q)}`, 5000);
     if (!res.ok) return local;
-    const json = await readJsonIfAvailable<{ quotes?: Record<string, unknown>[] }>(res);
+    const json = await readJsonIfAvailable<{
+      quotes?: Record<string, unknown>[];
+      items?: Array<{ symbol?: string; name?: string; asset_type?: string; exchange?: string }>;
+    }>(res);
     if (!json) return local;
 
-    const quotes: Record<string, unknown>[] = json.quotes ?? [];
+    const quotes: Record<string, unknown>[] = json.quotes
+      ?? (json.items ?? []).map(item => ({
+        isYahooFinance: true,
+        symbol: item.symbol,
+        longname: item.name,
+        quoteType: item.asset_type,
+        exchange: item.exchange,
+      }));
     const remotes: SearchResult[] = quotes
       .filter(q => q.isYahooFinance && q.symbol)
       .map(q => ({
