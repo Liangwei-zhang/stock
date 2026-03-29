@@ -16,6 +16,7 @@
 
 import type { IMarketDB, OHLCVRecord } from '../core/types';
 import { SERVER_URL, writeHeaders } from '../services/serverBridge';
+import { readJsonIfAvailable } from '../utils/http';
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,7 @@ async function serverGet<T>(path: string): Promise<T | null> {
   try {
     const res = await fetchWithTimeout(`${SERVER_URL}${path}`, { method: 'GET' });
     if (!res.ok) return null;
-    return res.json();
+    return readJsonIfAvailable<T>(res);
   } catch { return null; }
 }
 

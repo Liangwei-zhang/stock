@@ -8,6 +8,8 @@
  *  - 推送是 fire-and-forget：失败不会影响前端正常运行。
  */
 
+import { readJsonIfAvailable } from '../utils/http';
+
 // 前後端已整合為單一服務，使用相對路徑，自動適配任何端口
 const SERVER_URL = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? '';
 
@@ -50,7 +52,7 @@ export async function getAlertsFromServer(): Promise<unknown[]> {
   try {
     const res = await fetch(`${SERVER_URL}/alerts`);
     if (!res.ok) return [];
-    return await res.json();
+    return await readJsonIfAvailable<unknown[]>(res) ?? [];
   } catch {
     return [];
   }

@@ -5,6 +5,7 @@
  */
 
 import { SearchResult, AssetType } from '../types';
+import { readJsonIfAvailable } from '../utils/http';
 
 const SEARCH_URL = 'https://query1.finance.yahoo.com/v1/finance/search';
 // 後端搜尋代理端點（使用相對路徑，自動適配任何 port）
@@ -103,9 +104,10 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
   try {
     const res = await fetchTO(`${BACKEND_SEARCH}?q=${encodeURIComponent(q)}`, 5000);
     if (!res.ok) return local;
-    const json = await res.json();
+    const json = await readJsonIfAvailable<{ quotes?: Record<string, unknown>[] }>(res);
+    if (!json) return local;
 
-    const quotes: Record<string, unknown>[] = json?.quotes ?? [];
+    const quotes: Record<string, unknown>[] = json.quotes ?? [];
     const remotes: SearchResult[] = quotes
       .filter(q => q.isYahooFinance && q.symbol)
       .map(q => ({

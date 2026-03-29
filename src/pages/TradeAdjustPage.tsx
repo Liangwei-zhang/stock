@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Form, InputNumber, Alert, Spin, Typography, Result } from 'antd';
 import { useI18n } from '../i18n';
+import { readJsonIfAvailable } from '../utils/http';
 
 const { Title, Text } = Typography;
 
@@ -55,7 +56,11 @@ export default function TradeAdjustPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-      const data = await res.json() as { message?: string; error?: string };
+      const data = await readJsonIfAvailable<{ message?: string; error?: string }>(res);
+      if (!data) {
+        setError(t('tradeAdjust.networkError'));
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? t('tradeAdjust.submissionFailed'));
         return;

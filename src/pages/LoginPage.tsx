@@ -3,6 +3,7 @@ import { Button, Form, Input, message, Steps, Typography } from 'antd';
 import { MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth';
 import { LOCALE_NATIVE_LABELS, SUPPORTED_LOCALES, useI18n } from '../i18n';
+import { readJsonIfAvailable } from '../utils/http';
 
 const { Title, Text } = Typography;
 
@@ -51,7 +52,11 @@ export default function LoginPage({ onSuccess }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: values.email }),
       });
-      const data = await res.json() as { message?: string; error?: string; devCode?: string };
+      const data = await readJsonIfAvailable<{ message?: string; error?: string; devCode?: string }>(res);
+      if (!data) {
+        message.error(t('login.message.network'));
+        return;
+      }
       if (!res.ok) {
         message.error(data.error ?? t('login.message.sendLater'));
         return;
@@ -86,7 +91,11 @@ export default function LoginPage({ onSuccess }: Props) {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
-      const data = await res.json() as LoginResponse & { error?: string };
+      const data = await readJsonIfAvailable<LoginResponse & { error?: string }>(res);
+      if (!data) {
+        message.error(t('login.message.network'));
+        return;
+      }
       if (!res.ok) {
         message.error((data as { error?: string }).error ?? t('login.message.verifyFailed'));
         return;
