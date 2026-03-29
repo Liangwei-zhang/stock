@@ -177,6 +177,8 @@ export const SettingsPage: React.FC = () => {
           登出
         </Button>
       </div>
+
+      <BottomNav />
     </div>
   );
 };
